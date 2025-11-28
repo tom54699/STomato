@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Timer, Play, Pause, RotateCcw, Award, Target, MapPin } from 'lucide-react';
+import { Timer, Play, Pause, RotateCcw, Award, Target, MapPin, Zap } from 'lucide-react';
 import { User } from '../App';
 
 type HomeProps = {
@@ -319,6 +319,13 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
             className="bg-gray-200 text-gray-700 p-6 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-300 transform hover:scale-110 transition-all"
           >
             <RotateCcw className="w-8 h-8" />
+          </button>
+          <button
+            onClick={handleComplete}
+            className="bg-yellow-100 text-yellow-600 p-6 rounded-full border border-yellow-300 shadow hover:shadow-md transform hover:scale-105 transition-all"
+            title="快速完成一次番茄鐘（Demo 專用）"
+          >
+            <Zap className="w-8 h-8" />
           </button>
         </div>
         <div className="flex justify-center gap-3">
