@@ -33,14 +33,60 @@ function getWeekStart(date: Date) {
   return result;
 }
 
+// 時間格式轉換輔助函數
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// 計算結束時間和提醒時間
+function calculateTimes(startTime: string, durationMinutes: number): { endTime: string; reminderTime: string } {
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = startMinutes + durationMinutes;
+  const reminderMinutes = Math.max(startMinutes, endMinutes - 10); // 提前10分鐘提醒，但不早於開始時間
+
+  return {
+    endTime: minutesToTime(endMinutes),
+    reminderTime: minutesToTime(reminderMinutes)
+  };
+}
+
+// 檢查時間衝突
+function checkTimeConflicts(plans: StudyPlan[], date: string, startTime: string, durationMinutes: number): string[] {
+  const conflicts: string[] = [];
+  const dayPlans = plans.filter(plan => plan.date === date);
+
+  const newStart = timeToMinutes(startTime);
+  const newEnd = newStart + durationMinutes;
+
+  dayPlans.forEach(plan => {
+    const planStart = timeToMinutes(plan.startTime);
+    const planEnd = timeToMinutes(plan.endTime);
+
+    // 檢查是否有重疊
+    if (!(newEnd <= planStart || newStart >= planEnd)) {
+      conflicts.push(`與「${plan.title}」(${plan.startTime}-${plan.endTime}) 時間重疊`);
+    }
+  });
+
+  return conflicts;
+}
+
 
 export function StudyPlanner({ user }: StudyPlannerProps) {
   const today = formatDate(new Date());
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
-  const [form, setForm] = useState({ title: '', date: today, start: '19:00', end: '20:30', reminder: '19:50', location: '' });
+  const [form, setForm] = useState({ title: '', date: today, start: '19:00', duration: 90, location: '' });
   const [reminderToast, setReminderToast] = useState('');
+  const [timeConflicts, setTimeConflicts] = useState<string[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('studyPlans');
@@ -97,24 +143,35 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
+  // 檢查時間衝突
+  useEffect(() => {
+    if (form.start && form.duration && form.date) {
+      const conflicts = checkTimeConflicts(plans, form.date, form.start, form.duration);
+      setTimeConflicts(conflicts);
+    }
+  }, [plans, form.start, form.duration, form.date]);
+
 
   const addPlan = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.title.trim()) return;
+    if (!form.title.trim() || timeConflicts.length > 0) return;
+
+    const { endTime, reminderTime } = calculateTimes(form.start, form.duration);
+
     const newPlan: StudyPlan = {
       id: `plan-${Date.now()}`,
       title: form.title.trim(),
       date: form.date,
       startTime: form.start,
-      endTime: form.end,
+      endTime: endTime,
       location: form.location.trim() || undefined,
-      reminderTime: form.reminder,
+      reminderTime: reminderTime,
       completed: false,
       reminderTriggered: false,
     };
     setPlans([newPlan, ...plans]);
     // 清空表單，保持日期不變
-    setForm({ title: '', date: form.date, start: '19:00', end: '20:30', reminder: '19:50', location: '' });
+    setForm({ title: '', date: form.date, start: '19:00', duration: 90, location: '' });
     setSelectedDate(form.date);
   };
 
@@ -217,37 +274,74 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
               }}
             />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm text-gray-500">學習時長</label>
+              <select
+                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+                value={form.duration}
+                onChange={(event) => setForm((prev) => ({ ...prev, duration: Number(event.target.value) }))}
+              >
+                <option value={30}>30分鐘</option>
+                <option value={45}>45分鐘</option>
+                <option value={60}>1小時</option>
+                <option value={90}>1.5小時</option>
+                <option value={120}>2小時</option>
+                <option value={150}>2.5小時</option>
+                <option value={180}>3小時</option>
+              </select>
+            </div>
             <div>
               <label className="text-sm text-gray-500">開始時間</label>
               <input
                 type="time"
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+                className={`w-full rounded-2xl border px-3 py-2 ${
+                  timeConflicts.length > 0 ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                }`}
                 value={form.start}
                 onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
               />
             </div>
-            <div>
-              <label className="text-sm text-gray-500">結束時間</label>
-              <input
-                type="time"
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-                value={form.end}
-                onChange={(event) => setForm((prev) => ({ ...prev, end: event.target.value }))}
-              />
+          </div>
+
+          {/* 計算後的時間顯示 */}
+          {form.start && form.duration && (
+            <div className="bg-gray-50 rounded-2xl p-3 text-sm text-gray-600">
+              <div className="flex justify-between items-center">
+                <span>結束時間：</span>
+                <span className="font-semibold">{calculateTimes(form.start, form.duration).endTime}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>提醒時間：</span>
+                <span className="font-semibold">{calculateTimes(form.start, form.duration).reminderTime}</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="text-sm text-gray-500">提醒時間</label>
-            <input
-              type="time"
-              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-              value={form.reminder}
-              onChange={(event) => setForm((prev) => ({ ...prev, reminder: event.target.value }))}
-            />
-          </div>
-          <button type="submit" className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-2xl shadow-lg">
-            加入計畫
+          )}
+
+          {/* 時間衝突警告 */}
+          {timeConflicts.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
+              <div className="flex items-center gap-2 text-red-600 mb-1">
+                <span className="text-sm font-semibold">⚠️ 時間衝突</span>
+              </div>
+              {timeConflicts.map((conflict, index) => (
+                <p key={index} className="text-sm text-red-600">{conflict}</p>
+              ))}
+              <p className="text-xs text-red-500 mt-2">請調整開始時間或學習時長</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={timeConflicts.length > 0}
+            className={`py-3 rounded-2xl shadow-lg font-semibold transition-all ${
+              timeConflicts.length > 0
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl'
+            }`}
+          >
+            {timeConflicts.length > 0 ? '請先解決時間衝突' : '加入計畫'}
           </button>
         </form>
       </section>
@@ -290,16 +384,21 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                 <div className="flex flex-col gap-2 text-sm">
                   <button
                     className="text-blue-500"
-                    onClick={() =>
+                    onClick={() => {
+                      // 計算時長
+                      const startMinutes = timeToMinutes(plan.startTime);
+                      const endMinutes = timeToMinutes(plan.endTime);
+                      const duration = endMinutes - startMinutes;
+
                       setForm((prev) => ({
                         ...prev,
                         title: plan.title,
                         date: plan.date,
                         start: plan.startTime,
-                        end: plan.endTime,
-                        reminder: plan.reminderTime,
-                      }))
-                    }
+                        duration: duration,
+                        location: plan.location || ''
+                      }));
+                    }}
                   >
                     編輯
                   </button>
