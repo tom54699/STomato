@@ -7,6 +7,7 @@ import { Profile } from './components/Profile';
 import { Login } from './components/Login';
 import { Navigation } from './components/Navigation';
 import { Insights } from './components/Insights';
+import { Settlement } from './components/Settlement';
 
 export type User = {
   id: string;
@@ -24,7 +25,13 @@ export type School = {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'settlement'>('home');
+  const [settlementData, setSettlementData] = useState<{
+    sessionMinutes: number;
+    pointsEarned: number;
+    planTitle?: string;
+    planPercent?: number;
+  } | null>(null);
 
   // 模擬登入狀態檢查
   useEffect(() => {
@@ -53,22 +60,50 @@ export default function App() {
     }
   };
 
+  const goToSettlement = (data: {
+    sessionMinutes: number;
+    pointsEarned: number;
+    planTitle?: string;
+    planPercent?: number;
+  }) => {
+    setSettlementData(data);
+    setCurrentPage('settlement');
+  };
+
+  const returnToHome = () => {
+    setSettlementData(null);
+    setCurrentPage('home');
+  };
+
   if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-md mx-auto pb-24">
-        {currentPage === 'home' && <Home user={currentUser} onPointsUpdate={updateUserPoints} />}
-        {currentPage === 'planner' && <StudyPlanner user={currentUser} />}
-        {currentPage === 'schedule' && <Schedule />}
-        {currentPage === 'insights' && <Insights user={currentUser} />}
-        {currentPage === 'leaderboard' && <Leaderboard currentUser={currentUser} />}
-        {currentPage === 'profile' && <Profile user={currentUser} onLogout={handleLogout} />}
-      </div>
+      {currentPage === 'settlement' && settlementData ? (
+        <Settlement
+          user={currentUser}
+          sessionMinutes={settlementData.sessionMinutes}
+          pointsEarned={settlementData.pointsEarned}
+          planTitle={settlementData.planTitle}
+          planPercent={settlementData.planPercent}
+          onReturnHome={returnToHome}
+        />
+      ) : (
+        <>
+          <div className="max-w-md mx-auto pb-24">
+            {currentPage === 'home' && <Home user={currentUser} onPointsUpdate={updateUserPoints} onGoToSettlement={goToSettlement} />}
+            {currentPage === 'planner' && <StudyPlanner user={currentUser} />}
+            {currentPage === 'schedule' && <Schedule />}
+            {currentPage === 'insights' && <Insights user={currentUser} />}
+            {currentPage === 'leaderboard' && <Leaderboard currentUser={currentUser} />}
+            {currentPage === 'profile' && <Profile user={currentUser} onLogout={handleLogout} />}
+          </div>
 
-      <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
+          <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
+        </>
+      )}
     </div>
   );
 }

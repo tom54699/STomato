@@ -5,6 +5,12 @@ import { User } from '../App';
 type HomeProps = {
   user: User;
   onPointsUpdate: (points: number) => void;
+  onGoToSettlement: (data: {
+    sessionMinutes: number;
+    pointsEarned: number;
+    planTitle?: string;
+    planPercent?: number;
+  }) => void;
 };
 
 type StudyPlan = {
@@ -32,15 +38,12 @@ type FocusLog = {
   difficultyBonus?: number;
 };
 
-export function Home({ user, onPointsUpdate }: HomeProps) {
+export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
   const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [initialMinutes, setInitialMinutes] = useState(25);
   const [pointsEarned, setPointsEarned] = useState(0);
-  const [showReward, setShowReward] = useState(false);
-  const [rewardStats, setRewardStats] = useState<{ planPercent: number } | null>(null);
-  const [feedbackDraft, setFeedbackDraft] = useState<FocusLog | null>(null);
   const [recentLogs, setRecentLogs] = useState<FocusLog[]>([]);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -111,13 +114,14 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
     setIsRunning(false);
     const completionBonus = 50;
     const totalPoints = pointsEarned + completionBonus;
-    setPointsEarned(totalPoints);
     onPointsUpdate(totalPoints);
 
     const linkedPlan = todayPlans.find((plan) => plan.id === selectedPlanId);
-    setRewardStats({ planPercent: computePlanPercent(todayPlans) });
-    setFeedbackDraft({
-      id: `draft-${Date.now()}`,
+    const planPercent = computePlanPercent(todayPlans);
+
+    // 記錄焦點日誌
+    const focusLog: FocusLog = {
+      id: `log-${Date.now()}`,
       date: todayKey,
       minutes: initialMinutes,
       timestamp: Date.now(),
@@ -125,35 +129,28 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
       planTitle: linkedPlan?.title,
       location: linkedPlan?.location || customLocation || undefined,
       completionPercent: 100,
+    };
+    recordFocusLog(focusLog);
+
+    // 更新計畫完成狀態
+    if (selectedPlanId) {
+      updatePlanCompletion(selectedPlanId, 100);
+    }
+
+    // 導航到結算頁面
+    onGoToSettlement({
+      sessionMinutes: initialMinutes,
+      pointsEarned: totalPoints,
+      planTitle: linkedPlan?.title,
+      planPercent: planPercent,
     });
 
-    setShowReward(true);
+    // 重置計時器
     setSelectedPlanId('');
     setCustomLocation('');
-  };
-
-  const finalizeFeedback = (shouldSave: boolean) => {
-    if (!feedbackDraft) {
-      resetAfterFeedback();
-      return;
-    }
-    if (shouldSave) {
-      recordFocusLog(feedbackDraft);
-      if (feedbackDraft.planId) {
-        updatePlanCompletion(feedbackDraft.planId, 100);
-      }
-    } else {
-      recordFocusLog(feedbackDraft);
-    }
-    resetAfterFeedback();
-  };
-
-  const resetAfterFeedback = () => {
-    setShowReward(false);
-    setRewardStats(null);
-    setFeedbackDraft(null);
     resetTimer();
   };
+
 
   const toggleTimer = () => {
     if (!isRunning && minutes === initialMinutes && seconds === 0) {
@@ -402,127 +399,6 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
         </div>
       )}
 
-      {showReward && feedbackDraft && (
-        <div
-          className="fixed inset-0 bg-black/30 flex items-end justify-center z-[60] p-0"
-          onClick={() => finalizeFeedback(false)}
-          onTouchStart={(e) => {
-            touchStartRef.current = e.touches[0].clientY;
-          }}
-        >
-          <div
-            className="bg-white rounded-t-3xl shadow-2xl w-full max-w-md overflow-y-auto animate-in slide-in-from-bottom duration-300"
-            style={{
-              animation: 'slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              maxHeight: 'calc(100vh - 80px)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => {
-              touchStartRef.current = e.touches[0].clientY;
-            }}
-            onTouchEnd={(e) => {
-              const touchEnd = e.changedTouches[0].clientY;
-              const diff = touchEnd - touchStartRef.current;
-              if (diff > 100) {
-                finalizeFeedback(false);
-              }
-            }}
-          >
-            <style>{`
-              @keyframes slideUp {
-                from {
-                  transform: translateY(100%);
-                  opacity: 0;
-                }
-                to {
-                  transform: translateY(0);
-                  opacity: 1;
-                }
-              }
-              @keyframes numberPopup {
-                0% { transform: scale(0.5); opacity: 0; }
-                50% { transform: scale(1.1); }
-                100% { transform: scale(1); opacity: 1; }
-              }
-              .number-popup {
-                animation: numberPopup 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-              }
-            `}</style>
-            {/* 頂部慶祝區域 */}
-            <div className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 text-center text-white relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full bg-white/10"></div>
-              <div className="relative z-10">
-                <div className="text-6xl mb-4 animate-bounce">🎉</div>
-                <h2 className="text-3xl font-bold mb-2">太棒了！</h2>
-                <p className="text-orange-100 text-lg">專注完成</p>
-              </div>
-              {/* 裝飾性元素 */}
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-              <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/10 rounded-full"></div>
-            </div>
-
-            <div className="p-6 space-y-6 pb-24">
-              {/* 積分顯示 - 核心焦點 */}
-              <div className="text-center">
-                <p className="text-gray-600 text-sm mb-2">本次獲得</p>
-                <div className="number-popup text-6xl font-bold text-orange-500 mb-1">
-                  +{pointsEarned}
-                </div>
-                <p className="text-gray-500 text-xs">積分</p>
-              </div>
-
-              {/* 今日進度 */}
-              {rewardStats && todayPlans.length > 0 && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">今日計畫進度</span>
-                    <span className="text-emerald-600 font-semibold">{rewardStats.planPercent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full transition-all duration-1000"
-                      style={{ width: `${rewardStats.planPercent}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-
-              {/* 簡潔統計 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-2xl p-4 text-center">
-                  <p className="text-gray-500 text-xs mb-1">本次時長</p>
-                  <p className="text-xl font-semibold text-gray-800">{initialMinutes}分</p>
-                </div>
-                <div className="bg-gray-50 rounded-2xl p-4 text-center">
-                  <p className="text-gray-500 text-xs mb-1">總積分</p>
-                  <p className="text-xl font-semibold text-orange-500">{user.totalPoints}</p>
-                </div>
-              </div>
-
-              {/* 操作按鈕 - 固定位置 */}
-              <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-md px-6 flex gap-3 pt-2 bg-white">
-                <button
-                  className="flex-1 rounded-2xl border-2 border-gray-200 py-3 text-gray-600 font-semibold hover:bg-gray-50 active:scale-95 transition-all"
-                  onClick={() => finalizeFeedback(false)}
-                >
-                  詳情
-                </button>
-                <button
-                  className="flex-1 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white py-3 font-semibold shadow-lg hover:shadow-xl active:scale-95 transform transition-all"
-                  onClick={() => finalizeFeedback(true)}
-                >
-                  完成 ✨
-                </button>
-              </div>
-
-              {/* 滑動提示 */}
-              <div className="text-center text-gray-400 text-xs">
-                ↓ 向下滑動關閉
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
