@@ -57,25 +57,40 @@ function calculateTimes(startTime: string, durationMinutes: number): { endTime: 
   };
 }
 
-// 檢查時間衝突
-function checkTimeConflicts(plans: StudyPlan[], date: string, startTime: string, durationMinutes: number): string[] {
-  const conflicts: string[] = [];
+// 生成建議的開始時間選項（排除被占用的時段）
+function generateAvailableTimeSlots(plans: StudyPlan[], date: string, durationMinutes: number): string[] {
   const dayPlans = plans.filter(plan => plan.date === date);
+  const availableSlots: string[] = [];
 
-  const newStart = timeToMinutes(startTime);
-  const newEnd = newStart + durationMinutes;
+  // 從早上7點到晚上10點，每30分鐘一個時段
+  for (let hour = 7; hour <= 22; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = startMinutes + durationMinutes;
 
-  dayPlans.forEach(plan => {
-    const planStart = timeToMinutes(plan.startTime);
-    const planEnd = timeToMinutes(plan.endTime);
+      // 檢查是否超過一天
+      if (endMinutes >= 24 * 60) continue;
 
-    // 檢查是否有重疊
-    if (!(newEnd <= planStart || newStart >= planEnd)) {
-      conflicts.push(`與「${plan.title}」(${plan.startTime}-${plan.endTime}) 時間重疊`);
+      // 檢查是否與現有計畫衝突
+      let hasConflict = false;
+      for (const plan of dayPlans) {
+        const planStart = timeToMinutes(plan.startTime);
+        const planEnd = timeToMinutes(plan.endTime);
+
+        if (!(endMinutes <= planStart || startMinutes >= planEnd)) {
+          hasConflict = true;
+          break;
+        }
+      }
+
+      if (!hasConflict) {
+        availableSlots.push(startTime);
+      }
     }
-  });
+  }
 
-  return conflicts;
+  return availableSlots;
 }
 
 
@@ -86,7 +101,6 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
   const [form, setForm] = useState({ title: '', date: today, start: '19:00', duration: 90, location: '' });
   const [reminderToast, setReminderToast] = useState('');
-  const [timeConflicts, setTimeConflicts] = useState<string[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('studyPlans');
@@ -143,18 +157,16 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
-  // 檢查時間衝突
-  useEffect(() => {
-    if (form.start && form.duration && form.date) {
-      const conflicts = checkTimeConflicts(plans, form.date, form.start, form.duration);
-      setTimeConflicts(conflicts);
-    }
-  }, [plans, form.start, form.duration, form.date]);
+  // 獲取可用的時間段
+  const availableTimeSlots = useMemo(() =>
+    generateAvailableTimeSlots(plans, form.date, form.duration),
+    [plans, form.date, form.duration]
+  );
 
 
   const addPlan = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.title.trim() || timeConflicts.length > 0) return;
+    if (!form.title.trim()) return;
 
     const { endTime, reminderTime } = calculateTimes(form.start, form.duration);
 
@@ -294,14 +306,24 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </div>
             <div>
               <label className="text-sm text-gray-500">開始時間</label>
-              <input
-                type="time"
-                className={`w-full rounded-2xl border px-3 py-2 ${
-                  timeConflicts.length > 0 ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                }`}
+              <select
+                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
                 value={form.start}
                 onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
-              />
+              >
+                {availableTimeSlots.length === 0 ? (
+                  <option value="">今日沒有可用時段</option>
+                ) : (
+                  availableTimeSlots.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))
+                )}
+              </select>
+              {availableTimeSlots.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">請嘗試縮短學習時長或選擇其他日期</p>
+              )}
             </div>
           </div>
 
@@ -319,29 +341,16 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </div>
           )}
 
-          {/* 時間衝突警告 */}
-          {timeConflicts.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
-              <div className="flex items-center gap-2 text-red-600 mb-1">
-                <span className="text-sm font-semibold">⚠️ 時間衝突</span>
-              </div>
-              {timeConflicts.map((conflict, index) => (
-                <p key={index} className="text-sm text-red-600">{conflict}</p>
-              ))}
-              <p className="text-xs text-red-500 mt-2">請調整開始時間或學習時長</p>
-            </div>
-          )}
-
           <button
             type="submit"
-            disabled={timeConflicts.length > 0}
+            disabled={availableTimeSlots.length === 0 || !form.start}
             className={`py-3 rounded-2xl shadow-lg font-semibold transition-all ${
-              timeConflicts.length > 0
+              availableTimeSlots.length === 0 || !form.start
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl'
             }`}
           >
-            {timeConflicts.length > 0 ? '請先解決時間衝突' : '加入計畫'}
+            {availableTimeSlots.length === 0 ? '沒有可用時段' : '加入計畫'}
           </button>
         </form>
       </section>
@@ -398,6 +407,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                         duration: duration,
                         location: plan.location || ''
                       }));
+                      setSelectedDate(plan.date);
                     }}
                   >
                     編輯
