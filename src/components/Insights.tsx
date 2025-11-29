@@ -98,6 +98,36 @@ export function Insights({ user }: InsightsProps) {
   const progressPercent = Math.min(100, Math.round((weekStats.totalMinutes / monthlyGoalMinutes) * 100));
   const sessionPercent = Math.min(100, Math.round((weekStats.totalSessions / monthlyGoalSessions) * 100));
 
+  const completionStats = useMemo(() => {
+    const logsWithCompletion = logs.filter((log) => log.completionPercent !== undefined);
+    if (logsWithCompletion.length === 0) {
+      return {
+        avgCompletion: 0,
+        perfectCount: 0,
+        highCount: 0,
+        mediumCount: 0,
+        lowCount: 0,
+        total: 0,
+      };
+    }
+    const avgCompletion = Math.round(
+      logsWithCompletion.reduce((sum, log) => sum + (log.completionPercent || 0), 0) / logsWithCompletion.length
+    );
+    const perfectCount = logsWithCompletion.filter((log) => log.completionPercent === 100).length;
+    const highCount = logsWithCompletion.filter((log) => (log.completionPercent || 0) >= 80 && (log.completionPercent || 0) < 100).length;
+    const mediumCount = logsWithCompletion.filter((log) => (log.completionPercent || 0) >= 50 && (log.completionPercent || 0) < 80).length;
+    const lowCount = logsWithCompletion.filter((log) => (log.completionPercent || 0) < 50).length;
+
+    return {
+      avgCompletion,
+      perfectCount,
+      highCount,
+      mediumCount,
+      lowCount,
+      total: logsWithCompletion.length,
+    };
+  }, [logs]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 p-4 space-y-5">
       <header className="bg-white rounded-3xl shadow-lg p-6">
@@ -191,6 +221,65 @@ export function Insights({ user }: InsightsProps) {
                 <div className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-blue-500" style={{ width: `${sessionPercent}%` }}></div>
               </div>
             </div>
+          </div>
+        )}
+      </section>
+
+      <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Activity className="w-5 h-5 text-teal-500" />
+          <h2 className="text-gray-800">完成度分析</h2>
+        </div>
+        {completionStats.total > 0 ? (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-teal-50 rounded-2xl p-4">
+                <p className="text-teal-600 text-sm">平均完成度</p>
+                <p className="text-4xl font-bold text-teal-700">{completionStats.avgCompletion}%</p>
+              </div>
+              <div className="bg-blue-50 rounded-2xl p-4">
+                <p className="text-blue-600 text-sm">統計番茄鐘</p>
+                <p className="text-4xl font-bold text-blue-700">{completionStats.total}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">✨</span>
+                  <span className="text-gray-600">完美完成 (100%)</span>
+                </div>
+                <span className="font-bold text-gray-800">{completionStats.perfectCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🌟</span>
+                  <span className="text-gray-600">高完成度 (80-99%)</span>
+                </div>
+                <span className="font-bold text-gray-800">{completionStats.highCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">💪</span>
+                  <span className="text-gray-600">中等完成度 (50-79%)</span>
+                </div>
+                <span className="font-bold text-gray-800">{completionStats.mediumCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📈</span>
+                  <span className="text-gray-600">需要改進 (&lt;50%)</span>
+                </div>
+                <span className="font-bold text-gray-800">{completionStats.lowCount}</span>
+              </div>
+            </div>
+            <div className="bg-teal-50 border border-teal-100 rounded-xl p-3 text-sm text-teal-700">
+              你已記錄 {completionStats.total} 次番茄鐘的完成度。持續紀錄能幫助你了解學習效率。
+            </div>
+          </>
+        ) : (
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center text-gray-500 text-sm">
+            <p>還沒有完成度紀錄</p>
+            <p className="text-xs text-gray-400 mt-1">完成番茄鐘並在結算頁面記錄完成度後就會顯示分析</p>
           </div>
         )}
       </section>
