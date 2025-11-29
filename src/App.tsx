@@ -32,6 +32,8 @@ export default function App() {
     planTitle?: string;
     planPercent?: number;
     planId?: string;
+    previousNote?: string;
+    previousCompletionPercent?: number;
   } | null>(null);
 
   // 模擬登入狀態檢查
@@ -111,6 +113,8 @@ export default function App() {
           planTitle={settlementData.planTitle}
           planPercent={settlementData.planPercent}
           planId={settlementData.planId}
+          previousNote={settlementData.previousNote}
+          previousCompletionPercent={settlementData.previousCompletionPercent}
           onReturnHome={returnToHome}
         />
       ) : (

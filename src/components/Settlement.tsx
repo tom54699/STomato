@@ -9,6 +9,8 @@ type SettlementProps = {
   planTitle?: string;
   planPercent?: number;
   planId?: string;
+  previousNote?: string;
+  previousCompletionPercent?: number;
   onReturnHome: (note: string, completionPercent: number) => void;
 };
 
@@ -19,12 +21,14 @@ export function Settlement({
   planTitle,
   planPercent = 0,
   planId,
+  previousNote,
+  previousCompletionPercent = 100,
   onReturnHome
 }: SettlementProps) {
   const [isAnimating, setIsAnimating] = useState(true);
   const [displayPoints, setDisplayPoints] = useState(0);
-  const [note, setNote] = useState('');
-  const [completionPercent, setCompletionPercent] = useState(100);
+  const [note, setNote] = useState(previousNote || '');
+  const [completionPercent, setCompletionPercent] = useState(previousCompletionPercent);
 
   // 數字滾動動畫
   useEffect(() => {

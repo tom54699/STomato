@@ -9,6 +9,11 @@ type FocusLog = {
   timestamp: number;
   planId?: string;
   planTitle?: string;
+  location?: string;
+  note?: string;
+  completionPercent?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  difficultyBonus?: number;
 };
 
 type StudyPlan = {
