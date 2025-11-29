@@ -402,7 +402,7 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
 
       {showReward && feedbackDraft && (
         <div className="fixed inset-0 bg-gradient-to-br from-orange-400/20 to-pink-500/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-80 overflow-hidden">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
             {/* 頂部慶祝區域 */}
             <div className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 text-center text-white relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-sm"></div>

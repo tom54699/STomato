@@ -45,16 +45,19 @@ function minutesToTime(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-// 計算結束時間和提醒時間
-function calculateTimes(startTime: string, durationMinutes: number): { endTime: string; reminderTime: string } {
+// 計算結束時間
+function calculateEndTime(startTime: string, durationMinutes: number): string {
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = startMinutes + durationMinutes;
+  return minutesToTime(endMinutes);
+}
+
+// 建議提醒時間（用戶可以覆蓋）
+function suggestReminderTime(startTime: string, durationMinutes: number): string {
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = startMinutes + durationMinutes;
   const reminderMinutes = Math.max(startMinutes, endMinutes - 10); // 提前10分鐘提醒，但不早於開始時間
-
-  return {
-    endTime: minutesToTime(endMinutes),
-    reminderTime: minutesToTime(reminderMinutes)
-  };
+  return minutesToTime(reminderMinutes);
 }
 
 // 生成建議的開始時間選項（排除被占用的時段）
@@ -99,8 +102,9 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
-  const [form, setForm] = useState({ title: '', date: today, start: '19:00', duration: 90, location: '' });
+  const [form, setForm] = useState({ title: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
   const [reminderToast, setReminderToast] = useState('');
+  const [titleError, setTitleError] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('studyPlans');
@@ -157,18 +161,39 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
-  // 獲取可用的時間段
+  // 獲取可用的時間段（僅用於檢測衝突）
   const availableTimeSlots = useMemo(() =>
     generateAvailableTimeSlots(plans, form.date, form.duration),
     [plans, form.date, form.duration]
   );
 
+  // 當開始時間或時長變化時，自動建議提醒時間
+  useEffect(() => {
+    if (form.start && form.duration) {
+      const suggestedReminder = suggestReminderTime(form.start, form.duration);
+      setForm(prev => ({ ...prev, reminder: suggestedReminder }));
+    }
+  }, [form.start, form.duration]);
+
+  // 清除標題錯誤當用戶開始輸入
+  useEffect(() => {
+    if (form.title.trim() && titleError) {
+      setTitleError('');
+    }
+  }, [form.title, titleError]);
+
 
   const addPlan = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!form.title.trim()) return;
 
-    const { endTime, reminderTime } = calculateTimes(form.start, form.duration);
+    // 表單驗證
+    if (!form.title.trim()) {
+      setTitleError('請輸入計畫標題');
+      return;
+    }
+    setTitleError('');
+
+    const endTime = calculateEndTime(form.start, form.duration);
 
     const newPlan: StudyPlan = {
       id: `plan-${Date.now()}`,
@@ -177,13 +202,20 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       startTime: form.start,
       endTime: endTime,
       location: form.location.trim() || undefined,
-      reminderTime: reminderTime,
+      reminderTime: form.reminder,
       completed: false,
       reminderTriggered: false,
     };
     setPlans([newPlan, ...plans]);
-    // 清空表單，保持日期不變
-    setForm({ title: '', date: form.date, start: '19:00', duration: 90, location: '' });
+    // 清空表單，保持日期不變，重置提醒時間
+    setForm({
+      title: '',
+      date: form.date,
+      start: '19:00',
+      duration: 90,
+      reminder: suggestReminderTime('19:00', 90),
+      location: ''
+    });
     setSelectedDate(form.date);
   };
 
@@ -261,12 +293,19 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           <h2 className="text-gray-800">新增計畫</h2>
         </div>
         <form className="grid gap-3" onSubmit={addPlan}>
-          <input
-            className="rounded-2xl border border-gray-200 px-4 py-3"
-            placeholder="例如：英文單字第 4 節"
-            value={form.title}
-            onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-          />
+          <div>
+            <input
+              className={`w-full rounded-2xl border px-4 py-3 ${
+                titleError ? 'border-red-300 bg-red-50' : 'border-gray-200'
+              }`}
+              placeholder="例如：英文單字第 4 節"
+              value={form.title}
+              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+            />
+            {titleError && (
+              <p className="text-red-500 text-sm mt-1">{titleError}</p>
+            )}
+          </div>
           <input
             className="rounded-2xl border border-gray-200 px-4 py-3"
             placeholder="地點（可選，例如圖書館 3F）"
@@ -306,25 +345,23 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </div>
             <div>
               <label className="text-sm text-gray-500">開始時間</label>
-              <select
+              <input
+                type="time"
                 className="w-full rounded-2xl border border-gray-200 px-3 py-2"
                 value={form.start}
                 onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
-              >
-                {availableTimeSlots.length === 0 ? (
-                  <option value="">今日沒有可用時段</option>
-                ) : (
-                  availableTimeSlots.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))
-                )}
-              </select>
-              {availableTimeSlots.length === 0 && (
-                <p className="text-xs text-gray-400 mt-1">請嘗試縮短學習時長或選擇其他日期</p>
-              )}
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-500">提醒時間</label>
+            <input
+              type="time"
+              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              value={form.reminder}
+              onChange={(event) => setForm((prev) => ({ ...prev, reminder: event.target.value }))}
+            />
           </div>
 
           {/* 計算後的時間顯示 */}
@@ -332,25 +369,25 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             <div className="bg-gray-50 rounded-2xl p-3 text-sm text-gray-600">
               <div className="flex justify-between items-center">
                 <span>結束時間：</span>
-                <span className="font-semibold">{calculateTimes(form.start, form.duration).endTime}</span>
+                <span className="font-semibold">{calculateEndTime(form.start, form.duration)}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span>提醒時間：</span>
-                <span className="font-semibold">{calculateTimes(form.start, form.duration).reminderTime}</span>
+            </div>
+          )}
+
+          {/* 時間衝突檢查提示 */}
+          {form.start && form.duration && availableTimeSlots.length > 0 && !availableTimeSlots.includes(form.start) && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-sm">
+              <div className="text-amber-600">
+                ⚠️ 此時段可能與現有計畫重疊，請確認時間安排
               </div>
             </div>
           )}
 
           <button
             type="submit"
-            disabled={availableTimeSlots.length === 0 || !form.start}
-            className={`py-3 rounded-2xl shadow-lg font-semibold transition-all ${
-              availableTimeSlots.length === 0 || !form.start
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl'
-            }`}
+            className="py-3 rounded-2xl shadow-lg font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl"
           >
-            {availableTimeSlots.length === 0 ? '沒有可用時段' : '加入計畫'}
+            加入計畫
           </button>
         </form>
       </section>
@@ -405,6 +442,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                         date: plan.date,
                         start: plan.startTime,
                         duration: duration,
+                        reminder: plan.reminderTime,
                         location: plan.location || ''
                       }));
                       setSelectedDate(plan.date);
