@@ -44,7 +44,6 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [initialMinutes, setInitialMinutes] = useState(25);
   const [pointsEarned, setPointsEarned] = useState(0);
-  const [recentLogs, setRecentLogs] = useState<FocusLog[]>([]);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,7 +58,6 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
 
   useEffect(() => {
     loadTodayPlans();
-    loadRecentLogs();
   }, []);
 
   useEffect(() => {
@@ -193,21 +191,6 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
     }
   };
 
-  const loadRecentLogs = () => {
-    const raw = localStorage.getItem('focusLogs');
-    if (!raw) {
-      setRecentLogs([]);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as FocusLog[];
-      setRecentLogs(parsed.slice(0, 5));
-    } catch (error) {
-      console.warn('Failed to parse focusLogs', error);
-      setRecentLogs([]);
-    }
-  };
-
   const updatePlanCompletion = (planId?: string, percent = 100): number => {
     if (!planId) {
       const refreshed = todayPlans;
@@ -250,7 +233,6 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
     const newLog = { ...log, id: `log-${Date.now()}` };
     const nextLogs = [newLog, ...logs].slice(0, 200);
     localStorage.setItem('focusLogs', JSON.stringify(nextLogs));
-    setRecentLogs(nextLogs.slice(0, 5));
   };
 
   const progress = ((initialMinutes * 60 - (minutes * 60 + seconds)) / (initialMinutes * 60)) * 100;
@@ -375,28 +357,6 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
             </div>
           )}
           <p className="text-xs text-gray-400">選定計畫後完成番茄鐘會自動紀錄到洞察。</p>
-        </div>
-      )}
-
-      {recentLogs.length > 0 && (
-        <div className="bg-white rounded-3xl shadow-lg p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-gray-800">近期紀錄</h3>
-            <span className="text-xs text-gray-400">最近 {recentLogs.length} 次</span>
-          </div>
-          {recentLogs.map((log) => (
-            <div key={log.id} className="border border-gray-100 rounded-2xl p-3 text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>{log.planTitle ?? '自由番茄鐘'}</span>
-                <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-              <p className="text-xs text-gray-400">
-                {log.minutes} 分鐘 · {log.location ?? '未指定'}
-                {log.completionPercent !== undefined ? ` · 完成度 ${log.completionPercent}%` : ''}
-              </p>
-              {log.note && <p className="text-gray-600 mt-1">{log.note}</p>}
-            </div>
-          ))}
         </div>
       )}
 
