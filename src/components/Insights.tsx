@@ -286,6 +286,39 @@ export function Insights({ user }: InsightsProps) {
 
       <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
         <div className="flex items-center gap-2">
+          <Activity className="w-5 h-5 text-blue-500" />
+          <h2 className="text-gray-800">近期學習備註</h2>
+        </div>
+        {logs.filter((log) => log.note).length > 0 ? (
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {logs
+              .filter((log) => log.note)
+              .slice(0, 10)
+              .map((log) => (
+                <div key={log.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">{log.planTitle || '自由番茄鐘'}</p>
+                      <p className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</p>
+                    </div>
+                    <span className="bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                      {log.completionPercent || 100}%
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed">{log.note}</p>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center text-gray-500 text-sm">
+            <p>還沒有學習備註</p>
+            <p className="text-xs text-gray-400 mt-1">完成番茄鐘並在結算頁面添加備註，記錄你的學習心得</p>
+          </div>
+        )}
+      </section>
+
+      <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+        <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-500" />
           <h2 className="text-gray-800">下一步建議</h2>
         </div>
