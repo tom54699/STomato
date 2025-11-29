@@ -143,6 +143,7 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
       pointsEarned: totalPoints,
       planTitle: linkedPlan?.title,
       planPercent: planPercent,
+      planId: selectedPlanId,
     });
 
     // 重置計時器

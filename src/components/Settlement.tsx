@@ -8,7 +8,8 @@ type SettlementProps = {
   pointsEarned: number;
   planTitle?: string;
   planPercent?: number;
-  onReturnHome: () => void;
+  planId?: string;
+  onReturnHome: (note: string) => void;
 };
 
 export function Settlement({
@@ -17,10 +18,12 @@ export function Settlement({
   pointsEarned,
   planTitle,
   planPercent = 0,
+  planId,
   onReturnHome
 }: SettlementProps) {
   const [isAnimating, setIsAnimating] = useState(true);
   const [displayPoints, setDisplayPoints] = useState(0);
+  const [note, setNote] = useState('');
 
   // 數字滾動動畫
   useEffect(() => {
@@ -55,7 +58,7 @@ export function Settlement({
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* 返回按鈕 */}
       <button
-        onClick={onReturnHome}
+        onClick={() => onReturnHome(note)}
         className="fixed top-4 left-4 z-40 bg-white rounded-full p-3 shadow-md hover:shadow-lg transition-all active:scale-95"
       >
         <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -133,31 +136,24 @@ export function Settlement({
           </div>
         )}
 
-        {/* 難度評分（可選） */}
+        {/* 備註欄位 */}
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100">
-          <p className="text-xs text-gray-600 mb-3">專注難度</p>
-          <div className="flex gap-2 justify-center">
-            {['簡單', '普通', '困難'].map((level, idx) => (
-              <button
-                key={level}
-                className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95"
-                style={{
-                  background: idx === 1 ? 'linear-gradient(135deg, #a78bfa 0%, #f472b6 100%)' : '#f3f4f6',
-                  color: idx === 1 ? 'white' : '#6b7280'
-                }}
-              >
-                {level}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400 text-center mt-2">選擇此次的難度（可選）</p>
+          <p className="text-xs text-gray-600 mb-2">備註（可選）</p>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="記錄本次學習的心得、遇到的困難或其他備註..."
+            className="w-full bg-white rounded-xl p-3 text-sm text-gray-700 placeholder-gray-400 border border-gray-200 focus:border-purple-300 focus:ring-2 focus:ring-purple-100 focus:outline-none resize-none"
+            rows={3}
+          />
+          <p className="text-xs text-gray-400 mt-2">{note.length}/200</p>
         </div>
       </div>
 
       {/* 底部返回按鈕 */}
       <div className="max-w-md mx-auto px-6 pb-8">
         <button
-          onClick={onReturnHome}
+          onClick={() => onReturnHome(note)}
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold text-lg shadow-lg hover:shadow-xl active:scale-95 transition-all"
         >
           回到首頁 🏠

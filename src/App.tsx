@@ -31,6 +31,7 @@ export default function App() {
     pointsEarned: number;
     planTitle?: string;
     planPercent?: number;
+    planId?: string;
   } | null>(null);
 
   // 模擬登入狀態檢查
@@ -65,12 +66,15 @@ export default function App() {
     pointsEarned: number;
     planTitle?: string;
     planPercent?: number;
+    planId?: string;
   }) => {
     setSettlementData(data);
     setCurrentPage('settlement');
   };
 
-  const returnToHome = () => {
+  const returnToHome = (note: string) => {
+    // 備註會在這裡處理，可以保存到日誌中
+    // TODO: 將備註保存到焦點日誌
     setSettlementData(null);
     setCurrentPage('home');
   };
@@ -88,6 +92,7 @@ export default function App() {
           pointsEarned={settlementData.pointsEarned}
           planTitle={settlementData.planTitle}
           planPercent={settlementData.planPercent}
+          planId={settlementData.planId}
           onReturnHome={returnToHome}
         />
       ) : (
