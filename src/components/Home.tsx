@@ -404,7 +404,7 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
 
       {showReward && feedbackDraft && (
         <div
-          className="fixed inset-0 bg-black/30 flex items-end justify-center z-50 p-0"
+          className="fixed inset-0 bg-black/30 flex items-end justify-center z-[60] p-0"
           onClick={() => finalizeFeedback(false)}
           onTouchStart={(e) => {
             touchStartRef.current = e.touches[0].clientY;
