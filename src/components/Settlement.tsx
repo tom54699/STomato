@@ -24,6 +24,7 @@ export function Settlement({
   const [isAnimating, setIsAnimating] = useState(true);
   const [displayPoints, setDisplayPoints] = useState(0);
   const [note, setNote] = useState('');
+  const [completionPercent, setCompletionPercent] = useState(100);
 
   // 數字滾動動畫
   useEffect(() => {
@@ -116,25 +117,31 @@ export function Settlement({
           </div>
         </div>
 
-        {/* 計畫進度卡（如果有計畫） */}
-        {planTitle && (
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 border border-green-100">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-green-500" />
-                <p className="text-xs text-gray-600">今日計畫</p>
-              </div>
-              <p className="text-sm font-semibold text-green-600">{planPercent}%</p>
+        {/* 完成度滑塊 */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-blue-500" />
+              <p className="text-xs text-gray-600">番茄鐘完成度</p>
             </div>
-            <p className="text-sm text-gray-700 mb-3 font-medium truncate">{planTitle}</p>
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-1000"
-                style={{ width: `${planPercent}%` }}
-              ></div>
-            </div>
+            <p className="text-sm font-bold text-blue-600">{completionPercent}%</p>
           </div>
-        )}
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="5"
+            value={completionPercent}
+            onChange={(e) => setCompletionPercent(Number(e.target.value))}
+            className="w-full h-3 bg-blue-200 rounded-full appearance-none cursor-pointer accent-blue-500"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-3 px-1">
+            <span>未完成</span>
+            <span>部分完成</span>
+            <span>全部完成</span>
+          </div>
+          <p className="text-xs text-gray-400 text-center mt-3">拖曳滑塊評估本次番茄鐘的完成度</p>
+        </div>
 
         {/* 備註欄位 */}
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100">
