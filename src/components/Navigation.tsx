@@ -1,15 +1,15 @@
-import { Home, Notebook, CalendarClock, Trophy, User, LineChart } from 'lucide-react';
+import { Home, Notebook, BookOpen, Trophy, User, LineChart } from 'lucide-react';
 
 type NavigationProps = {
-  currentPage: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile';
-  onPageChange: (page: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile') => void;
+  currentPage: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'courses';
+  onPageChange: (page: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'courses') => void;
 };
 
 export function Navigation({ currentPage, onPageChange }: NavigationProps) {
   const navItems = [
     { id: 'home' as const, icon: Home, label: '首頁' },
     { id: 'planner' as const, icon: Notebook, label: '讀書計畫' },
-    { id: 'schedule' as const, icon: CalendarClock, label: '課表' },
+    { id: 'courses' as const, icon: BookOpen, label: '課程進度' },
     { id: 'insights' as const, icon: LineChart, label: '洞察' },
     { id: 'leaderboard' as const, icon: Trophy, label: '排行' },
     { id: 'profile' as const, icon: User, label: '我的' },
