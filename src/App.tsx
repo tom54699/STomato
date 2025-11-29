@@ -8,6 +8,7 @@ import { Login } from './components/Login';
 import { Navigation } from './components/Navigation';
 import { Insights } from './components/Insights';
 import { Settlement } from './components/Settlement';
+import { FocusHistory } from './components/FocusHistory';
 
 export type User = {
   id: string;
@@ -25,7 +26,7 @@ export type School = {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'settlement'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'settlement' | 'history'>('home');
   const [settlementData, setSettlementData] = useState<{
     sessionMinutes: number;
     pointsEarned: number;
@@ -123,9 +124,10 @@ export default function App() {
             {currentPage === 'home' && <Home user={currentUser} onPointsUpdate={updateUserPoints} onGoToSettlement={goToSettlement} />}
             {currentPage === 'planner' && <StudyPlanner user={currentUser} />}
             {currentPage === 'schedule' && <Schedule />}
-            {currentPage === 'insights' && <Insights user={currentUser} />}
+            {currentPage === 'insights' && <Insights user={currentUser} onViewHistory={() => setCurrentPage('history')} />}
             {currentPage === 'leaderboard' && <Leaderboard currentUser={currentUser} />}
             {currentPage === 'profile' && <Profile user={currentUser} onLogout={handleLogout} />}
+            {currentPage === 'history' && <FocusHistory user={currentUser} onBack={() => setCurrentPage('home')} />}
           </div>
 
           <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />

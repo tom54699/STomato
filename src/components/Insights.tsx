@@ -28,6 +28,7 @@ type StudyPlan = {
 
 type InsightsProps = {
   user: User;
+  onViewHistory?: () => void;
 };
 
 const weekdayShort = ['一', '二', '三', '四', '五', '六', '日'];
@@ -35,7 +36,7 @@ const weekdayShort = ['一', '二', '三', '四', '五', '六', '日'];
 const monthlyGoalMinutes = 1800;
 const monthlyGoalSessions = 60;
 
-export function Insights({ user }: InsightsProps) {
+export function Insights({ user, onViewHistory }: InsightsProps) {
   const [view, setView] = useState<'week' | 'month'>('week');
   const [logs, setLogs] = useState<FocusLog[]>([]);
   const [plans, setPlans] = useState<StudyPlan[]>([]);
@@ -349,6 +350,18 @@ export function Insights({ user }: InsightsProps) {
           </div>
         </div>
       </section>
+
+      {/* 查看完整歷史 */}
+      {onViewHistory && (
+        <div className="mt-6 mb-8">
+          <button
+            onClick={onViewHistory}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2"
+          >
+            📊 查看完整焦點歷史
+          </button>
+        </div>
+      )}
     </div>
   );
 }
