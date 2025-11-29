@@ -1,5 +1,20 @@
 import { LogOut, Award, School, User as UserIcon, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { User } from '../App';
+
+type FocusLog = {
+  id: string;
+  date: string;
+  minutes: number;
+  timestamp: number;
+  planId?: string;
+  planTitle?: string;
+  location?: string;
+  note?: string;
+  completionPercent?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  difficultyBonus?: number;
+};
 
 type ProfileProps = {
   user: User;
@@ -7,11 +22,32 @@ type ProfileProps = {
 };
 
 export function Profile({ user, onLogout }: ProfileProps) {
+  const [logs, setLogs] = useState<FocusLog[]>([]);
+
+  useEffect(() => {
+    const savedLogs = localStorage.getItem('focusLogs');
+    if (savedLogs) {
+      try {
+        setLogs(JSON.parse(savedLogs) as FocusLog[]);
+      } catch (error) {
+        console.warn('Failed to parse focusLogs', error);
+      }
+    }
+  }, []);
+
   const handleLogout = () => {
     if (confirm('確定要登出嗎？')) {
       onLogout();
     }
   };
+
+  // 計算實際統計
+  const totalSessions = logs.length;
+  const totalMinutes = logs.reduce((sum, log) => sum + log.minutes, 0);
+  const perfectSessions = logs.filter((log) => log.completionPercent === 100).length;
+  const avgCompletion = logs.length > 0
+    ? Math.round(logs.reduce((sum, log) => sum + (log.completionPercent || 0), 0) / logs.length)
+    : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-orange-50 p-4">
@@ -39,12 +75,26 @@ export function Profile({ user, onLogout }: ProfileProps) {
         <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
           <div className="text-4xl mb-2">🍅</div>
           <p className="text-gray-500 mb-1">完成番茄鐘</p>
-          <p className="text-gray-800">{Math.floor(user.totalPoints / 100)} 次</p>
+          <p className="text-gray-800">{totalSessions} 次</p>
         </div>
         <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
           <div className="text-4xl mb-2">⏱️</div>
           <p className="text-gray-500 mb-1">專注時間</p>
-          <p className="text-gray-800">{Math.floor(user.totalPoints / 4)} 分鐘</p>
+          <p className="text-gray-800">{totalMinutes} 分鐘</p>
+        </div>
+      </div>
+
+      {/* 完成度統計 */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="text-4xl mb-2">✨</div>
+          <p className="text-gray-500 mb-1">完美完成</p>
+          <p className="text-gray-800">{perfectSessions} 次</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="text-4xl mb-2">📊</div>
+          <p className="text-gray-500 mb-1">平均完成度</p>
+          <p className="text-gray-800">{avgCompletion}%</p>
         </div>
       </div>
 
@@ -55,33 +105,33 @@ export function Profile({ user, onLogout }: ProfileProps) {
           <h2 className="text-gray-800">成就徽章</h2>
         </div>
         <div className="grid grid-cols-4 gap-4">
-          {user.totalPoints >= 100 && (
+          {totalSessions >= 5 && (
             <div className="text-center">
               <div className="text-4xl mb-1">🏆</div>
               <p className="text-gray-600 text-sm">新手</p>
             </div>
           )}
-          {user.totalPoints >= 500 && (
+          {totalSessions >= 20 && (
             <div className="text-center">
               <div className="text-4xl mb-1">🎯</div>
               <p className="text-gray-600 text-sm">專注者</p>
             </div>
           )}
-          {user.totalPoints >= 1000 && (
+          {avgCompletion >= 90 && totalSessions >= 10 && (
             <div className="text-center">
               <div className="text-4xl mb-1">⭐</div>
               <p className="text-gray-600 text-sm">學霸</p>
             </div>
           )}
-          {user.totalPoints >= 5000 && (
+          {perfectSessions >= 15 && (
             <div className="text-center">
               <div className="text-4xl mb-1">👑</div>
               <p className="text-gray-600 text-sm">大師</p>
             </div>
           )}
         </div>
-        {user.totalPoints < 100 && (
-          <p className="text-gray-400 text-center mt-4">完成更多番茄鐘解鎖成就</p>
+        {totalSessions < 5 && (
+          <p className="text-gray-400 text-center mt-4">完成 5 次番茄鐘解鎖第一個成就</p>
         )}
       </div>
 
