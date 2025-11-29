@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type ClassItem = {
@@ -52,66 +52,69 @@ const TODO_LABELS = {
   memo: '備忘',
 };
 
+const DEFAULT_CLASSES: ClassItem[] = [
+  {
+    id: '1',
+    name: '微積分',
+    startTime: '08:00',
+    endTime: '10:00',
+    location: '普通教室 101',
+    day: 0,
+    color: 'bg-blue-400',
+    type: 'class'
+  },
+  {
+    id: '2',
+    name: '英文',
+    startTime: '10:00',
+    endTime: '12:00',
+    location: '語言教室 205',
+    day: 0,
+    color: 'bg-green-400',
+    type: 'class'
+  },
+  {
+    id: '3',
+    name: '物理',
+    startTime: '13:00',
+    endTime: '15:00',
+    location: '實驗室 A',
+    day: 1,
+    color: 'bg-purple-400',
+    type: 'class'
+  },
+  {
+    id: '4',
+    name: '程式設計',
+    startTime: '09:00',
+    endTime: '12:00',
+    location: '電腦教室 B',
+    day: 3,
+    color: 'bg-yellow-400',
+    type: 'class'
+  },
+  {
+    id: '5',
+    name: '體育',
+    startTime: '14:00',
+    endTime: '16:00',
+    location: '體育館',
+    day: 4,
+    color: 'bg-red-400',
+    type: 'class'
+  },
+];
+
+const DEFAULT_TODOS: TodoItem[] = [
+  { id: 't1', title: '微積分習題 3-5', date: '2025-11-30', todoType: 'homework', completed: false, type: 'todo' },
+  { id: 't2', title: '物理期中考', date: '2025-12-05', todoType: 'exam', completed: false, type: 'todo' },
+  { id: 't3', title: '準備專題報告', date: '2025-12-01', todoType: 'memo', completed: false, type: 'todo' },
+];
+
 export function Schedule() {
   const [view, setView] = useState<'week' | 'month'>('week');
-  const [classes, setClasses] = useState<ClassItem[]>([
-    { 
-      id: '1', 
-      name: '微積分', 
-      startTime: '08:00', 
-      endTime: '10:00', 
-      location: '普通教室 101', 
-      day: 0,
-      color: 'bg-blue-400',
-      type: 'class'
-    },
-    { 
-      id: '2', 
-      name: '英文', 
-      startTime: '10:00', 
-      endTime: '12:00', 
-      location: '語言教室 205', 
-      day: 0,
-      color: 'bg-green-400',
-      type: 'class'
-    },
-    { 
-      id: '3', 
-      name: '物理', 
-      startTime: '13:00', 
-      endTime: '15:00', 
-      location: '實驗室 A', 
-      day: 1,
-      color: 'bg-purple-400',
-      type: 'class'
-    },
-    { 
-      id: '4', 
-      name: '程式設計', 
-      startTime: '09:00', 
-      endTime: '12:00', 
-      location: '電腦教室 B', 
-      day: 3,
-      color: 'bg-yellow-400',
-      type: 'class'
-    },
-    { 
-      id: '5', 
-      name: '體育', 
-      startTime: '14:00', 
-      endTime: '16:00', 
-      location: '體育館', 
-      day: 4,
-      color: 'bg-red-400',
-      type: 'class'
-    },
-  ]);
-  
-  const [todos, setTodos] = useState<TodoItem[]>([
-    { id: 't1', title: '微積分習題 3-5', date: '2025-11-30', todoType: 'homework', completed: false, type: 'todo' },
-    { id: 't2', title: '物理期中考', date: '2025-12-05', todoType: 'exam', completed: false, type: 'todo' },
-    { id: 't3', title: '準備專題報告', date: '2025-12-01', todoType: 'memo', completed: false, type: 'todo' },
-  ]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddForm, setShowAddForm] = useState(false);
@@ -131,6 +134,48 @@ export function Schedule() {
     date: '',
     todoType: 'homework' as 'homework' | 'exam' | 'memo',
   });
+
+  // 初始化和持久化
+  useEffect(() => {
+    const savedClasses = localStorage.getItem('scheduleClasses');
+    const savedTodos = localStorage.getItem('scheduleTodos');
+
+    if (savedClasses) {
+      try {
+        setClasses(JSON.parse(savedClasses));
+      } catch (error) {
+        console.warn('Failed to parse scheduleClasses', error);
+        setClasses(DEFAULT_CLASSES);
+      }
+    } else {
+      setClasses(DEFAULT_CLASSES);
+    }
+
+    if (savedTodos) {
+      try {
+        setTodos(JSON.parse(savedTodos));
+      } catch (error) {
+        console.warn('Failed to parse scheduleTodos', error);
+        setTodos(DEFAULT_TODOS);
+      }
+    } else {
+      setTodos(DEFAULT_TODOS);
+    }
+  }, []);
+
+  // 保存課程到 localStorage
+  useEffect(() => {
+    if (classes.length > 0) {
+      localStorage.setItem('scheduleClasses', JSON.stringify(classes));
+    }
+  }, [classes]);
+
+  // 保存待辦事項到 localStorage
+  useEffect(() => {
+    if (todos.length > 0) {
+      localStorage.setItem('scheduleTodos', JSON.stringify(todos));
+    }
+  }, [todos]);
 
   // 獲取當週的日期範圍
   const getWeekDates = () => {
