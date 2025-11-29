@@ -119,9 +119,9 @@ function generateTimeSlotStatus(plans: StudyPlan[], date: string, durationMinute
   const dayPlans = plans.filter(plan => plan.date === date);
   const timeSlots = [];
 
-  // 從早上7點到晚上10點，每30分鐘一個時段
+  // 從早上7點到晚上10點，每15分鐘一個時段
   for (let hour = 7; hour <= 22; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
+    for (let minute = 0; minute < 60; minute += 15) {
       const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const startMinutes = timeToMinutes(startTime);
       const endMinutes = startMinutes + durationMinutes;
@@ -411,50 +411,22 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </select>
           </div>
 
-          {/* 時間表視覺化 */}
-          <div className="space-y-3">
+          {/* 開始時間下拉選單 */}
+          <div>
             <label className="text-sm text-gray-500">選擇開始時間</label>
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4">
-              <div className="grid grid-cols-4 gap-2">
-                {timeSlotStatus.map((slot) => (
-                  <button
-                    key={slot.time}
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, start: slot.time }))}
-                    className={`p-3 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 ${
-                      slot.available
-                        ? form.start === slot.time
-                          ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
-                          : 'bg-white text-gray-700 border-2 border-green-300 hover:border-green-500'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'
-                    }`}
-                    disabled={!slot.available}
-                    title={
-                      slot.available
-                        ? '可用'
-                        : `與 ${slot.conflictingPlan?.title} (${slot.conflictingPlan?.startTime}-${slot.conflictingPlan?.endTime}) 衝突`
-                    }
-                  >
-                    {slot.time}
-                    <div className="text-xs mt-1">
-                      {slot.available ? '✅' : `❌ ${slot.conflictingPlan?.title.substring(0, 4)}`}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* 圖例 */}
-              <div className="mt-4 flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-4 h-4 bg-white border-2 border-green-300 rounded"></div>
-                  <span className="text-gray-600">可用</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-4 h-4 bg-gray-200 rounded"></div>
-                  <span className="text-gray-600">已被占用</span>
-                </div>
-              </div>
-            </div>
+            <select
+              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              value={form.start}
+              onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
+            >
+              <option value="">-- 請選擇開始時間 --</option>
+              {timeSlotStatus.map((slot) => (
+                <option key={slot.time} value={slot.time} disabled={!slot.available}>
+                  {slot.time}
+                  {!slot.available && ` (與${slot.conflictingPlan?.title}衝突)`}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -484,7 +456,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                 ⚠️ 此時段與現有計畫衝突！
               </div>
               <p className="text-red-600 text-xs mt-1">
-                請選擇綠色的可用時段
+                請選擇其他可用時段
               </p>
             </div>
           )}
