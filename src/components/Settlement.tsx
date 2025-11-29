@@ -140,7 +140,7 @@ export function Settlement({
             <span>部分完成</span>
             <span>全部完成</span>
           </div>
-          <p className="text-xs text-gray-400 text-center mt-3">拖曳滑塊評估本次番茄鐘的完成度</p>
+          <p className="text-xs text-gray-400 text-center mt-3">你原本計畫要完成的事項達成了多少？</p>
         </div>
 
         {/* 備註欄位 */}
