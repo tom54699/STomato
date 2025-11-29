@@ -28,6 +28,8 @@ type FocusLog = {
   location?: string;
   note?: string;
   completionPercent?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  difficultyBonus?: number;
 };
 
 export function Home({ user, onPointsUpdate }: HomeProps) {
@@ -39,12 +41,12 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
   const [showReward, setShowReward] = useState(false);
   const [rewardStats, setRewardStats] = useState<{ planPercent: number } | null>(null);
   const [feedbackDraft, setFeedbackDraft] = useState<FocusLog | null>(null);
-  const [feedbackForm, setFeedbackForm] = useState({ note: '', percent: 100 });
   const [recentLogs, setRecentLogs] = useState<FocusLog[]>([]);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const visibilityRef = useRef(true);
+  const touchStartRef = useRef(0);
 
   const [todayPlans, setTodayPlans] = useState<StudyPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
@@ -122,8 +124,9 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
       planId: selectedPlanId || undefined,
       planTitle: linkedPlan?.title,
       location: linkedPlan?.location || customLocation || undefined,
+      completionPercent: 100,
     });
-    setFeedbackForm({ note: '', percent: linkedPlan?.completed ? 100 : 100 });
+
     setShowReward(true);
     setSelectedPlanId('');
     setCustomLocation('');
@@ -135,9 +138,9 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
       return;
     }
     if (shouldSave) {
-      recordFocusLog({ ...feedbackDraft, note: feedbackForm.note.trim() || undefined, completionPercent: feedbackForm.percent });
+      recordFocusLog(feedbackDraft);
       if (feedbackDraft.planId) {
-        updatePlanCompletion(feedbackDraft.planId, feedbackForm.percent);
+        updatePlanCompletion(feedbackDraft.planId, 100);
       }
     } else {
       recordFocusLog(feedbackDraft);
@@ -149,7 +152,6 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
     setShowReward(false);
     setRewardStats(null);
     setFeedbackDraft(null);
-    setFeedbackForm({ note: '', percent: 100 });
     resetTimer();
   };
 
@@ -401,94 +403,120 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
       )}
 
       {showReward && feedbackDraft && (
-        <div className="fixed inset-0 bg-gradient-to-br from-orange-400/20 to-pink-500/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/30 flex items-end justify-center z-50 p-0"
+          onClick={() => finalizeFeedback(false)}
+          onTouchStart={(e) => {
+            touchStartRef.current = e.touches[0].clientY;
+          }}
+        >
+          <div
+            className="bg-white rounded-t-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom duration-300"
+            style={{
+              animation: 'slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              touchStartRef.current = e.touches[0].clientY;
+            }}
+            onTouchEnd={(e) => {
+              const touchEnd = e.changedTouches[0].clientY;
+              const diff = touchEnd - touchStartRef.current;
+              if (diff > 100) {
+                finalizeFeedback(false);
+              }
+            }}
+          >
+            <style>{`
+              @keyframes slideUp {
+                from {
+                  transform: translateY(100%);
+                  opacity: 0;
+                }
+                to {
+                  transform: translateY(0);
+                  opacity: 1;
+                }
+              }
+              @keyframes numberPopup {
+                0% { transform: scale(0.5); opacity: 0; }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); opacity: 1; }
+              }
+              .number-popup {
+                animation: numberPopup 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+              }
+            `}</style>
             {/* 頂部慶祝區域 */}
             <div className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 text-center text-white relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-sm"></div>
+              <div className="absolute top-0 left-0 w-full h-full bg-white/10"></div>
               <div className="relative z-10">
-                <div className="text-6xl mb-3 animate-bounce">🎉</div>
-                <h2 className="text-2xl font-bold mb-2">太棒了！</h2>
+                <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                <h2 className="text-3xl font-bold mb-2">太棒了！</h2>
                 <p className="text-orange-100 text-lg">專注完成</p>
-                <div className="bg-white/20 rounded-full px-4 py-2 mt-4 inline-block">
-                  <span className="text-xl font-semibold">+{pointsEarned} 積分</span>
-                </div>
               </div>
               {/* 裝飾性元素 */}
               <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
               <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/10 rounded-full"></div>
             </div>
 
-            <div className="p-6 space-y-5">
-              {/* 進度顯示 */}
+            <div className="p-6 space-y-6">
+              {/* 積分顯示 - 核心焦點 */}
+              <div className="text-center">
+                <p className="text-gray-600 text-sm mb-2">本次獲得</p>
+                <div className="number-popup text-6xl font-bold text-orange-500 mb-1">
+                  +{pointsEarned}
+                </div>
+                <p className="text-gray-500 text-xs">積分</p>
+              </div>
+
+              {/* 今日進度 */}
               {rewardStats && todayPlans.length > 0 && (
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-600">今日計畫進度</span>
                     <span className="text-emerald-600 font-semibold">{rewardStats.planPercent}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-1000"
+                      className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full transition-all duration-1000"
                       style={{ width: `${rewardStats.planPercent}%` }}
                     ></div>
                   </div>
                 </div>
               )}
 
-              {/* 完成度滑桿 */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">這次專注完成度</span>
-                  <span className="text-lg font-semibold text-orange-500">{feedbackForm.percent}%</span>
+              {/* 簡潔統計 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-2xl p-4 text-center">
+                  <p className="text-gray-500 text-xs mb-1">本次時長</p>
+                  <p className="text-xl font-semibold text-gray-800">{initialMinutes}分</p>
                 </div>
-                <div className="relative">
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={feedbackForm.percent}
-                    onChange={(event) => setFeedbackForm((prev) => ({ ...prev, percent: Number(event.target.value) }))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none slider"
-                    style={{
-                      background: `linear-gradient(to right, #fb923c 0%, #fb923c ${feedbackForm.percent}%, #e5e7eb ${feedbackForm.percent}%, #e5e7eb 100%)`
-                    }}
-                  />
+                <div className="bg-gray-50 rounded-2xl p-4 text-center">
+                  <p className="text-gray-500 text-xs mb-1">總積分</p>
+                  <p className="text-xl font-semibold text-orange-500">{user.totalPoints}</p>
                 </div>
-                {/* 完成度標示 */}
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>需要改進</span>
-                  <span>很棒</span>
-                  <span>完美</span>
-                </div>
-              </div>
-
-              {/* 心得輸入 */}
-              <div className="space-y-2">
-                <label className="text-sm text-gray-600 block">記錄這次的收穫 💭</label>
-                <textarea
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
-                  placeholder="分享你的學習心得、遇到的困難或收穫..."
-                  value={feedbackForm.note}
-                  onChange={(event) => setFeedbackForm((prev) => ({ ...prev, note: event.target.value }))}
-                  rows={3}
-                ></textarea>
               </div>
 
               {/* 操作按鈕 */}
               <div className="flex gap-3 pt-2">
                 <button
-                  className="flex-1 rounded-2xl border-2 border-gray-200 py-4 text-gray-600 font-semibold hover:bg-gray-50 transition-all active:scale-95"
+                  className="flex-1 rounded-2xl border-2 border-gray-200 py-3 text-gray-600 font-semibold hover:bg-gray-50 active:scale-95 transition-all"
                   onClick={() => finalizeFeedback(false)}
                 >
-                  暫時跳過
+                  詳情
                 </button>
                 <button
-                  className="flex-1 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white py-4 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all active:scale-95"
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white py-3 font-semibold shadow-lg hover:shadow-xl active:scale-95 transform transition-all"
                   onClick={() => finalizeFeedback(true)}
                 >
-                  保存記錄 ✨
+                  完成 ✨
                 </button>
+              </div>
+
+              {/* 滑動提示 */}
+              <div className="text-center text-gray-400 text-xs">
+                ↓ 向下滑動關閉
               </div>
             </div>
           </div>

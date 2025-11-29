@@ -9,7 +9,8 @@ type StudyPlan = {
   startTime: string;
   endTime: string;
   location?: string;
-  reminderTime: string; // HH:MM
+  reminderTime: string; // HH:MM（給UI顯示）
+  reminderDateTime: string; // YYYY-MM-DDTHH:MM:SS（完整時間戳用於檢查）
   completed: boolean;
   reminderTriggered: boolean;
 };
@@ -52,12 +53,29 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
   return minutesToTime(endMinutes);
 }
 
-// 建議提醒時間（用戶可以覆蓋）
-function suggestReminderTime(startTime: string, durationMinutes: number): string {
+// 建議提醒時間（用戶可以覆蓋）- 返回 HH:MM 給 UI 顯示
+function suggestReminderTime(startTime: string): string {
   const startMinutes = timeToMinutes(startTime);
-  const endMinutes = startMinutes + durationMinutes;
-  const reminderMinutes = Math.max(startMinutes, endMinutes - 10); // 提前10分鐘提醒，但不早於開始時間
+  const reminderMinutes = Math.max(0, startMinutes - 10); // 開始前10分鐘
   return minutesToTime(reminderMinutes);
+}
+
+// 計算完整的提醒日期時間 - 處理跨日情況
+function calculateReminderDateTime(date: string, startTime: string): string {
+  const startMinutes = timeToMinutes(startTime);
+  let reminderMinutes = startMinutes - 10;
+  let reminderDate = date;
+
+  // 如果提醒時間變成負數，改到前一天
+  if (reminderMinutes < 0) {
+    const prevDate = new Date(date);
+    prevDate.setDate(prevDate.getDate() - 1);
+    reminderDate = formatDate(prevDate);
+    reminderMinutes = 24 * 60 + reminderMinutes; // 轉換為前一天的時間
+  }
+
+  const reminderTime = minutesToTime(reminderMinutes);
+  return `${reminderDate}T${reminderTime}:00`;
 }
 
 // 生成建議的開始時間選項（排除被占用的時段）
@@ -65,9 +83,9 @@ function generateAvailableTimeSlots(plans: StudyPlan[], date: string, durationMi
   const dayPlans = plans.filter(plan => plan.date === date);
   const availableSlots: string[] = [];
 
-  // 從早上7點到晚上10點，每30分鐘一個時段
+  // 從早上7點到晚上10點，每15分鐘一個時段
   for (let hour = 7; hour <= 22; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
+    for (let minute = 0; minute < 60; minute += 15) {
       const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const startMinutes = timeToMinutes(startTime);
       const endMinutes = startMinutes + durationMinutes;
@@ -94,6 +112,46 @@ function generateAvailableTimeSlots(plans: StudyPlan[], date: string, durationMi
   }
 
   return availableSlots;
+}
+
+// 生成時間表以顯示該天的時間段狀態
+function generateTimeSlotStatus(plans: StudyPlan[], date: string, durationMinutes: number) {
+  const dayPlans = plans.filter(plan => plan.date === date);
+  const timeSlots = [];
+
+  // 從早上7點到晚上10點，每30分鐘一個時段
+  for (let hour = 7; hour <= 22; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const startMinutes = timeToMinutes(startTime);
+      const endMinutes = startMinutes + durationMinutes;
+
+      // 檢查是否超過一天
+      if (endMinutes >= 24 * 60) {
+        continue;
+      }
+
+      // 找衝突的計畫
+      let conflictingPlan: StudyPlan | null = null;
+      for (const plan of dayPlans) {
+        const planStart = timeToMinutes(plan.startTime);
+        const planEnd = timeToMinutes(plan.endTime);
+
+        if (!(endMinutes <= planStart || startMinutes >= planEnd)) {
+          conflictingPlan = plan;
+          break;
+        }
+      }
+
+      timeSlots.push({
+        time: startTime,
+        available: !conflictingPlan,
+        conflictingPlan: conflictingPlan,
+      });
+    }
+  }
+
+  return timeSlots;
 }
 
 
@@ -127,9 +185,11 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       let message = '';
       setPlans((prev) =>
         prev.map((plan) => {
-          if (plan.completed || plan.reminderTriggered || !plan.reminderTime) return plan;
-          if (plan.date !== formatDate(now)) return plan;
-          const reminderMoment = new Date(`${plan.date}T${plan.reminderTime}`);
+          if (plan.completed || plan.reminderTriggered || !plan.reminderDateTime) return plan;
+
+          // 直接用完整的 reminderDateTime 比較，無需考慮日期
+          const reminderMoment = new Date(plan.reminderDateTime);
+
           if (now >= reminderMoment) {
             if (!message) {
               message = `該開始 ${plan.title} 了！`;
@@ -167,13 +227,19 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     [plans, form.date, form.duration]
   );
 
-  // 當開始時間或時長變化時，自動建議提醒時間
+  // 獲取時間表狀態（用於視覺化顯示）
+  const timeSlotStatus = useMemo(() =>
+    generateTimeSlotStatus(plans, form.date, form.duration),
+    [plans, form.date, form.duration]
+  );
+
+  // 當開始時間變化時，自動建議提醒時間
   useEffect(() => {
-    if (form.start && form.duration) {
-      const suggestedReminder = suggestReminderTime(form.start, form.duration);
+    if (form.start) {
+      const suggestedReminder = suggestReminderTime(form.start);
       setForm(prev => ({ ...prev, reminder: suggestedReminder }));
     }
-  }, [form.start, form.duration]);
+  }, [form.start]);
 
   // 清除標題錯誤當用戶開始輸入
   useEffect(() => {
@@ -194,6 +260,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     setTitleError('');
 
     const endTime = calculateEndTime(form.start, form.duration);
+    const reminderDateTime = calculateReminderDateTime(form.date, form.start);
 
     const newPlan: StudyPlan = {
       id: `plan-${Date.now()}`,
@@ -203,6 +270,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       endTime: endTime,
       location: form.location.trim() || undefined,
       reminderTime: form.reminder,
+      reminderDateTime: reminderDateTime,
       completed: false,
       reminderTriggered: false,
     };
@@ -213,7 +281,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       date: form.date,
       start: '19:00',
       duration: 90,
-      reminder: suggestReminderTime('19:00', 90),
+      reminder: suggestReminderTime('19:00'),
       location: ''
     });
     setSelectedDate(form.date);
@@ -326,31 +394,66 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm text-gray-500">學習時長</label>
-              <select
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-                value={form.duration}
-                onChange={(event) => setForm((prev) => ({ ...prev, duration: Number(event.target.value) }))}
-              >
-                <option value={30}>30分鐘</option>
-                <option value={45}>45分鐘</option>
-                <option value={60}>1小時</option>
-                <option value={90}>1.5小時</option>
-                <option value={120}>2小時</option>
-                <option value={150}>2.5小時</option>
-                <option value={180}>3小時</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">開始時間</label>
-              <input
-                type="time"
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-                value={form.start}
-                onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
-              />
+          <div>
+            <label className="text-sm text-gray-500">學習時長</label>
+            <select
+              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              value={form.duration}
+              onChange={(event) => setForm((prev) => ({ ...prev, duration: Number(event.target.value) }))}
+            >
+              <option value={30}>30分鐘</option>
+              <option value={45}>45分鐘</option>
+              <option value={60}>1小時</option>
+              <option value={90}>1.5小時</option>
+              <option value={120}>2小時</option>
+              <option value={150}>2.5小時</option>
+              <option value={180}>3小時</option>
+            </select>
+          </div>
+
+          {/* 時間表視覺化 */}
+          <div className="space-y-3">
+            <label className="text-sm text-gray-500">選擇開始時間</label>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4">
+              <div className="grid grid-cols-4 gap-2">
+                {timeSlotStatus.map((slot) => (
+                  <button
+                    key={slot.time}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, start: slot.time }))}
+                    className={`p-3 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 ${
+                      slot.available
+                        ? form.start === slot.time
+                          ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-700 border-2 border-green-300 hover:border-green-500'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'
+                    }`}
+                    disabled={!slot.available}
+                    title={
+                      slot.available
+                        ? '可用'
+                        : `與 ${slot.conflictingPlan?.title} (${slot.conflictingPlan?.startTime}-${slot.conflictingPlan?.endTime}) 衝突`
+                    }
+                  >
+                    {slot.time}
+                    <div className="text-xs mt-1">
+                      {slot.available ? '✅' : `❌ ${slot.conflictingPlan?.title.substring(0, 4)}`}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* 圖例 */}
+              <div className="mt-4 flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 bg-white border-2 border-green-300 rounded"></div>
+                  <span className="text-gray-600">可用</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                  <span className="text-gray-600">已被占用</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -375,19 +478,27 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           )}
 
           {/* 時間衝突檢查提示 */}
-          {form.start && form.duration && availableTimeSlots.length > 0 && !availableTimeSlots.includes(form.start) && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-sm">
-              <div className="text-amber-600">
-                ⚠️ 此時段可能與現有計畫重疊，請確認時間安排
+          {form.start && form.duration && !availableTimeSlots.includes(form.start) && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
+              <div className="text-red-700 font-semibold">
+                ⚠️ 此時段與現有計畫衝突！
               </div>
+              <p className="text-red-600 text-xs mt-1">
+                請選擇綠色的可用時段
+              </p>
             </div>
           )}
 
           <button
             type="submit"
-            className="py-3 rounded-2xl shadow-lg font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl"
+            disabled={!form.title.trim() || !form.start || !availableTimeSlots.includes(form.start)}
+            className={`py-3 rounded-2xl shadow-lg font-semibold transition-all ${
+              !form.title.trim() || !form.start || !availableTimeSlots.includes(form.start)
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl hover:scale-105 active:scale-95'
+            }`}
           >
-            加入計畫
+            {!form.start ? '請選擇開始時間' : !availableTimeSlots.includes(form.start) ? '請選擇可用時段' : '加入計畫'}
           </button>
         </form>
       </section>
@@ -442,7 +553,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                         date: plan.date,
                         start: plan.startTime,
                         duration: duration,
-                        reminder: plan.reminderTime,
+                        reminder: plan.reminderTime || suggestReminderTime(plan.startTime),
                         location: plan.location || ''
                       }));
                       setSelectedDate(plan.date);
