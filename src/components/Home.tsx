@@ -401,37 +401,95 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
       )}
 
       {showReward && feedbackDraft && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4">
-            <div className="text-center">
-              <div className="text-4xl mb-2">🎉</div>
-              <h2 className="text-gray-800">太棒了！</h2>
-              <p className="text-gray-600">完成番茄鐘 +{pointsEarned} 積分</p>
-              {rewardStats && todayPlans.length > 0 && (
-                <p className="text-sm text-gray-500">今日計畫完成度 {rewardStats.planPercent}%</p>
-              )}
+        <div className="fixed inset-0 bg-gradient-to-br from-orange-400/20 to-pink-500/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {/* 頂部慶祝區域 */}
+            <div className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 text-center text-white relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-sm"></div>
+              <div className="relative z-10">
+                <div className="text-6xl mb-3 animate-bounce">🎉</div>
+                <h2 className="text-2xl font-bold mb-2">太棒了！</h2>
+                <p className="text-orange-100 text-lg">專注完成</p>
+                <div className="bg-white/20 rounded-full px-4 py-2 mt-4 inline-block">
+                  <span className="text-xl font-semibold">+{pointsEarned} 積分</span>
+                </div>
+              </div>
+              {/* 裝飾性元素 */}
+              <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
+              <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/10 rounded-full"></div>
             </div>
-            <textarea
-              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-              placeholder="寫下這次番茄鐘的收穫或遇到的困難"
-              value={feedbackForm.note}
-              onChange={(event) => setFeedbackForm((prev) => ({ ...prev, note: event.target.value }))}
-            ></textarea>
-            <label className="text-sm text-gray-500">完成度 {feedbackForm.percent}%</label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={feedbackForm.percent}
-              onChange={(event) => setFeedbackForm((prev) => ({ ...prev, percent: Number(event.target.value) }))}
-            />
-            <div className="flex gap-3">
-              <button className="flex-1 rounded-2xl border border-gray-200 py-2" onClick={() => finalizeFeedback(false)}>
-                略過
-              </button>
-              <button className="flex-1 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white py-2" onClick={() => finalizeFeedback(true)}>
-                儲存
-              </button>
+
+            <div className="p-6 space-y-5">
+              {/* 進度顯示 */}
+              {rewardStats && todayPlans.length > 0 && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-600">今日計畫進度</span>
+                    <span className="text-emerald-600 font-semibold">{rewardStats.planPercent}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-1000"
+                      style={{ width: `${rewardStats.planPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {/* 完成度滑桿 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">這次專注完成度</span>
+                  <span className="text-lg font-semibold text-orange-500">{feedbackForm.percent}%</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={feedbackForm.percent}
+                    onChange={(event) => setFeedbackForm((prev) => ({ ...prev, percent: Number(event.target.value) }))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none slider"
+                    style={{
+                      background: `linear-gradient(to right, #fb923c 0%, #fb923c ${feedbackForm.percent}%, #e5e7eb ${feedbackForm.percent}%, #e5e7eb 100%)`
+                    }}
+                  />
+                </div>
+                {/* 完成度標示 */}
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>需要改進</span>
+                  <span>很棒</span>
+                  <span>完美</span>
+                </div>
+              </div>
+
+              {/* 心得輸入 */}
+              <div className="space-y-2">
+                <label className="text-sm text-gray-600 block">記錄這次的收穫 💭</label>
+                <textarea
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
+                  placeholder="分享你的學習心得、遇到的困難或收穫..."
+                  value={feedbackForm.note}
+                  onChange={(event) => setFeedbackForm((prev) => ({ ...prev, note: event.target.value }))}
+                  rows={3}
+                ></textarea>
+              </div>
+
+              {/* 操作按鈕 */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  className="flex-1 rounded-2xl border-2 border-gray-200 py-4 text-gray-600 font-semibold hover:bg-gray-50 transition-all active:scale-95"
+                  onClick={() => finalizeFeedback(false)}
+                >
+                  暫時跳過
+                </button>
+                <button
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white py-4 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all active:scale-95"
+                  onClick={() => finalizeFeedback(true)}
+                >
+                  保存記錄 ✨
+                </button>
+              </div>
             </div>
           </div>
         </div>
