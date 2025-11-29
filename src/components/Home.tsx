@@ -401,95 +401,84 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
       )}
 
       {showReward && feedbackDraft && (
-        <div className="fixed inset-0 bg-gradient-to-br from-orange-400/20 to-pink-500/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
-            {/* 頂部慶祝區域 */}
-            <div className="bg-gradient-to-br from-orange-400 to-pink-500 p-8 text-center text-white relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full bg-white/10 backdrop-blur-sm"></div>
-              <div className="relative z-10">
-                <div className="text-6xl mb-3 animate-bounce">🎉</div>
-                <h2 className="text-2xl font-bold mb-2">太棒了！</h2>
-                <p className="text-orange-100 text-lg">專注完成</p>
-                <div className="bg-white/20 rounded-full px-4 py-2 mt-4 inline-block">
-                  <span className="text-xl font-semibold">+{pointsEarned} 積分</span>
-                </div>
-              </div>
-              {/* 裝飾性元素 */}
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-              <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/10 rounded-full"></div>
-            </div>
+        <div className="fixed inset-0 bg-gradient-to-br from-orange-400 to-pink-500 z-50 flex flex-col">
+          {/* 頂部慶祝區域 */}
+          <div className="flex-1 flex flex-col items-center justify-center text-white relative">
+            {/* 背景裝飾 */}
+            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="absolute top-10 right-8 w-20 h-20 bg-white/20 rounded-full"></div>
+            <div className="absolute top-32 left-6 w-12 h-12 bg-white/15 rounded-full"></div>
+            <div className="absolute bottom-40 right-12 w-16 h-16 bg-white/10 rounded-full"></div>
 
-            <div className="p-6 space-y-5">
-              {/* 進度顯示 */}
+            <div className="relative z-10 text-center">
+              <div className="text-8xl mb-6 animate-bounce">🎉</div>
+              <h1 className="text-4xl font-bold mb-4">完成！</h1>
+              <p className="text-xl text-orange-100 mb-8">{initialMinutes}分鐘專注時間</p>
+
+              {/* 積分顯示 */}
+              <div className="bg-white/20 backdrop-blur-sm rounded-3xl px-8 py-4 mb-6">
+                <div className="text-3xl font-bold">+{pointsEarned}</div>
+                <div className="text-orange-100">積分獲得</div>
+              </div>
+
+              {/* 今日進度 */}
               {rewardStats && todayPlans.length > 0 && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">今日計畫進度</span>
-                    <span className="text-emerald-600 font-semibold">{rewardStats.planPercent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${rewardStats.planPercent}%` }}
-                    ></div>
-                  </div>
+                <div className="bg-white/15 backdrop-blur-sm rounded-2xl px-6 py-3 mb-4">
+                  <div className="text-sm text-orange-100 mb-1">今日計畫完成</div>
+                  <div className="text-2xl font-bold">{rewardStats.planPercent}%</div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* 完成度滑桿 */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">這次專注完成度</span>
-                  <span className="text-lg font-semibold text-orange-500">{feedbackForm.percent}%</span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={feedbackForm.percent}
-                    onChange={(event) => setFeedbackForm((prev) => ({ ...prev, percent: Number(event.target.value) }))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none slider"
-                    style={{
-                      background: `linear-gradient(to right, #fb923c 0%, #fb923c ${feedbackForm.percent}%, #e5e7eb ${feedbackForm.percent}%, #e5e7eb 100%)`
-                    }}
-                  />
-                </div>
-                {/* 完成度標示 */}
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>需要改進</span>
-                  <span>很棒</span>
-                  <span>完美</span>
-                </div>
+          {/* 底部操作區 */}
+          <div className="bg-white rounded-t-3xl p-6 space-y-4 flex-shrink-0">
+            {/* 完成度評分 */}
+            <div className="text-center mb-4">
+              <div className="text-lg font-semibold text-gray-800 mb-2">專注程度</div>
+              <div className="flex justify-center gap-2 mb-2">
+                {[20, 40, 60, 80, 100].map((score) => (
+                  <button
+                    key={score}
+                    onClick={() => setFeedbackForm(prev => ({ ...prev, percent: score }))}
+                    className={`w-12 h-12 rounded-full border-2 transition-all ${
+                      feedbackForm.percent === score
+                        ? 'bg-orange-500 border-orange-500 text-white'
+                        : 'border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    {score}
+                  </button>
+                ))}
               </div>
+              <div className="flex justify-between text-xs text-gray-400 px-2">
+                <span>需要加油</span>
+                <span>表現完美</span>
+              </div>
+            </div>
 
-              {/* 心得輸入 */}
-              <div className="space-y-2">
-                <label className="text-sm text-gray-600 block">記錄這次的收穫 💭</label>
-                <textarea
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition-all"
-                  placeholder="分享你的學習心得、遇到的困難或收穫..."
-                  value={feedbackForm.note}
-                  onChange={(event) => setFeedbackForm((prev) => ({ ...prev, note: event.target.value }))}
-                  rows={3}
-                ></textarea>
-              </div>
+            {/* 心得記錄 */}
+            <textarea
+              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm resize-none h-20"
+              placeholder="記錄學習心得..."
+              value={feedbackForm.note}
+              onChange={(event) => setFeedbackForm((prev) => ({ ...prev, note: event.target.value }))}
+            />
 
-              {/* 操作按鈕 */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  className="flex-1 rounded-2xl border-2 border-gray-200 py-4 text-gray-600 font-semibold hover:bg-gray-50 transition-all active:scale-95"
-                  onClick={() => finalizeFeedback(false)}
-                >
-                  暫時跳過
-                </button>
-                <button
-                  className="flex-1 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white py-4 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all active:scale-95"
-                  onClick={() => finalizeFeedback(true)}
-                >
-                  保存記錄 ✨
-                </button>
-              </div>
+            {/* 底部按鈕 */}
+            <div className="flex gap-3">
+              <button
+                className="flex-1 py-4 rounded-2xl border border-gray-300 text-gray-600 font-medium"
+                onClick={() => finalizeFeedback(false)}
+              >
+                跳過
+              </button>
+              <button
+                className="flex-1 py-4 rounded-2xl bg-orange-500 text-white font-medium"
+                onClick={() => finalizeFeedback(true)}
+              >
+                完成
+              </button>
             </div>
           </div>
         </div>

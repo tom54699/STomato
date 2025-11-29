@@ -33,93 +33,6 @@ function getWeekStart(date: Date) {
   return result;
 }
 
-// 智能時間建議功能
-function suggestTimeSlot(existingPlans: StudyPlan[], date: string, duration: number = 90): { start: string; end: string; reminder: string } {
-  const dayPlans = existingPlans.filter(plan => plan.date === date).sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-  // 常見的學習時間段（優先順序）
-  const preferredSlots = [
-    { start: '07:00', label: '早晨黃金時間' },
-    { start: '14:00', label: '下午專注時間' },
-    { start: '19:00', label: '晚間學習時間' },
-    { start: '09:00', label: '上午時光' },
-    { start: '16:00', label: '下午時間' },
-    { start: '21:00', label: '夜間時間' }
-  ];
-
-  // 檢查時間衝突
-  const hasConflict = (startTime: string, endTime: string): boolean => {
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-
-    return dayPlans.some(plan => {
-      const planStart = timeToMinutes(plan.startTime);
-      const planEnd = timeToMinutes(plan.endTime);
-      return !(endMinutes <= planStart || startMinutes >= planEnd);
-    });
-  };
-
-  // 嘗試找到合適的時間段
-  for (const slot of preferredSlots) {
-    const endTime = minutesToTime(timeToMinutes(slot.start) + duration);
-    if (!hasConflict(slot.start, endTime)) {
-      const reminderTime = minutesToTime(timeToMinutes(endTime) - 10);
-      return { start: slot.start, end: endTime, reminder: reminderTime };
-    }
-  }
-
-  // 如果沒有找到合適的時間段，找最早可用的時間
-  let currentTime = timeToMinutes('07:00');
-  const endOfDay = timeToMinutes('23:00');
-
-  while (currentTime + duration <= endOfDay) {
-    const startTime = minutesToTime(currentTime);
-    const endTime = minutesToTime(currentTime + duration);
-
-    if (!hasConflict(startTime, endTime)) {
-      const reminderTime = minutesToTime(currentTime + duration - 10);
-      return { start: startTime, end: endTime, reminder: reminderTime };
-    }
-    currentTime += 30; // 每30分鐘嘗試一次
-  }
-
-  // 兜底方案
-  const reminderTime = minutesToTime(timeToMinutes('20:20'));
-  return { start: '19:30', end: '21:00', reminder: reminderTime };
-}
-
-// 時間格式轉換輔助函數
-function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-}
-
-// 檢查時間衝突
-function checkTimeConflicts(plans: StudyPlan[], date: string, startTime: string, endTime: string, excludeId?: string): string[] {
-  const conflicts: string[] = [];
-  const dayPlans = plans.filter(plan => plan.date === date && plan.id !== excludeId);
-
-  const newStart = timeToMinutes(startTime);
-  const newEnd = timeToMinutes(endTime);
-
-  dayPlans.forEach(plan => {
-    const planStart = timeToMinutes(plan.startTime);
-    const planEnd = timeToMinutes(plan.endTime);
-
-    // 檢查是否有重疊
-    if (!(newEnd <= planStart || newStart >= planEnd)) {
-      conflicts.push(`與「${plan.title}」(${plan.startTime}-${plan.endTime}) 時間重疊`);
-    }
-  });
-
-  return conflicts;
-}
 
 export function StudyPlanner({ user }: StudyPlannerProps) {
   const today = formatDate(new Date());
@@ -128,7 +41,6 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
   const [form, setForm] = useState({ title: '', date: today, start: '19:00', end: '20:30', reminder: '19:50', location: '' });
   const [reminderToast, setReminderToast] = useState('');
-  const [timeConflicts, setTimeConflicts] = useState<string[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('studyPlans');
@@ -185,24 +97,6 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
-  // 檢查時間衝突
-  useEffect(() => {
-    if (form.start && form.end && form.date) {
-      const conflicts = checkTimeConflicts(plans, form.date, form.start, form.end);
-      setTimeConflicts(conflicts);
-    }
-  }, [plans, form.start, form.end, form.date]);
-
-  // 智能建議時間
-  const suggestSmartTime = () => {
-    const suggestion = suggestTimeSlot(plans, form.date, 90); // 預設90分鐘
-    setForm(prev => ({
-      ...prev,
-      start: suggestion.start,
-      end: suggestion.end,
-      reminder: suggestion.reminder
-    }));
-  };
 
   const addPlan = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -219,7 +113,8 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       reminderTriggered: false,
     };
     setPlans([newPlan, ...plans]);
-    setForm({ title: '', date: form.date, start: form.start, end: form.end, reminder: form.reminder, location: form.location });
+    // 清空表單，保持日期不變
+    setForm({ title: '', date: form.date, start: '19:00', end: '20:30', reminder: '19:50', location: '' });
     setSelectedDate(form.date);
   };
 
@@ -292,18 +187,9 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       </section>
 
       <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ListChecks className="w-5 h-5 text-indigo-500" />
-            <h2 className="text-gray-800">新增計畫</h2>
-          </div>
-          <button
-            type="button"
-            onClick={suggestSmartTime}
-            className="text-sm bg-gradient-to-r from-purple-400 to-pink-400 text-white px-3 py-1.5 rounded-full hover:shadow-md transition-all"
-          >
-            ✨ 智能安排
-          </button>
+        <div className="flex items-center gap-2">
+          <ListChecks className="w-5 h-5 text-indigo-500" />
+          <h2 className="text-gray-800">新增計畫</h2>
         </div>
         <form className="grid gap-3" onSubmit={addPlan}>
           <input
@@ -319,49 +205,24 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm text-gray-500">日期</label>
-              <input
-                type="date"
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-                value={form.date}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, date: event.target.value }));
-                  setSelectedDate(event.target.value);
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">學習時長</label>
-              <select
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-                onChange={(event) => {
-                  const duration = Number(event.target.value);
-                  if (duration > 0) {
-                    const startMinutes = timeToMinutes(form.start);
-                    const newEnd = minutesToTime(startMinutes + duration);
-                    const newReminder = minutesToTime(startMinutes + duration - 10);
-                    setForm(prev => ({ ...prev, end: newEnd, reminder: newReminder }));
-                  }
-                }}
-              >
-                <option value="">自訂時間</option>
-                <option value="30">30分鐘</option>
-                <option value="45">45分鐘</option>
-                <option value="60">1小時</option>
-                <option value="90">1.5小時</option>
-                <option value="120">2小時</option>
-              </select>
-            </div>
+          <div>
+            <label className="text-sm text-gray-500">日期</label>
+            <input
+              type="date"
+              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              value={form.date}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, date: event.target.value }));
+                setSelectedDate(event.target.value);
+              }}
+            />
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-gray-500">開始時間</label>
               <input
                 type="time"
-                className={`w-full rounded-2xl border px-3 py-2 ${timeConflicts.length > 0 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
                 value={form.start}
                 onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
               />
@@ -370,51 +231,23 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
               <label className="text-sm text-gray-500">結束時間</label>
               <input
                 type="time"
-                className={`w-full rounded-2xl border px-3 py-2 ${timeConflicts.length > 0 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
                 value={form.end}
                 onChange={(event) => setForm((prev) => ({ ...prev, end: event.target.value }))}
               />
             </div>
-            <div className="col-span-2">
-              <label className="text-sm text-gray-500">提醒時間</label>
-              <input
-                type="time"
-                className="w-full rounded-2xl border border-gray-200 px-3 py-2"
-                value={form.reminder}
-                onChange={(event) => setForm((prev) => ({ ...prev, reminder: event.target.value }))}
-              />
-            </div>
           </div>
-
-          {/* 時間衝突警告 */}
-          {timeConflicts.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
-              <div className="flex items-center gap-2 text-red-600 mb-1">
-                <span className="text-sm font-semibold">⚠️ 時間衝突</span>
-              </div>
-              {timeConflicts.map((conflict, index) => (
-                <p key={index} className="text-sm text-red-600">{conflict}</p>
-              ))}
-              <button
-                type="button"
-                onClick={suggestSmartTime}
-                className="mt-2 text-sm text-red-600 underline hover:no-underline"
-              >
-                建議其他時間
-              </button>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={timeConflicts.length > 0}
-            className={`py-3 rounded-2xl shadow-lg font-semibold transition-all ${
-              timeConflicts.length > 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl'
-            }`}
-          >
-            {timeConflicts.length > 0 ? '請先解決時間衝突' : '加入計畫'}
+          <div>
+            <label className="text-sm text-gray-500">提醒時間</label>
+            <input
+              type="time"
+              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              value={form.reminder}
+              onChange={(event) => setForm((prev) => ({ ...prev, reminder: event.target.value }))}
+            />
+          </div>
+          <button type="submit" className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-2xl shadow-lg">
+            加入計畫
           </button>
         </form>
       </section>
