@@ -1,6 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Trophy, School, Users, Medal, Building2 } from 'lucide-react';
 import { User } from '../App';
+
+type FocusLog = {
+  id: string;
+  date: string;
+  minutes: number;
+  timestamp: number;
+  planId?: string;
+  planTitle?: string;
+  location?: string;
+  note?: string;
+  completionPercent?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  difficultyBonus?: number;
+};
 
 type LeaderboardProps = {
   currentUser: User;
@@ -37,7 +51,24 @@ const getSchoolUsers = (schoolName: string) => {
 
 export function Leaderboard({ currentUser }: LeaderboardProps) {
   const [tab, setTab] = useState<'school' | 'personal' | 'schoolInternal'>('school');
+  const [logs, setLogs] = useState<FocusLog[]>([]);
 
+  useEffect(() => {
+    const savedLogs = localStorage.getItem('focusLogs');
+    if (savedLogs) {
+      try {
+        setLogs(JSON.parse(savedLogs) as FocusLog[]);
+      } catch (error) {
+        console.warn('Failed to parse focusLogs', error);
+      }
+    }
+  }, []);
+
+  // 計算當前用戶的實際會話數
+  const currentUserSessions = logs.length;
+
+  // 用於校內排行榜：可以根據需要擴展為支持多用戶
+  // 目前：currentUser 是唯一的本地用戶，其他都是 mock data
   const schoolUsers = getSchoolUsers(currentUser.school);
   const currentUserRankInSchool = schoolUsers.findIndex((u) => u.id === currentUser.id) + 1;
 
@@ -258,6 +289,29 @@ export function Leaderboard({ currentUser }: LeaderboardProps) {
           )}
         </div>
       )}
+
+      {/* 本地統計資訊 */}
+      <div className="mt-6 bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="w-6 h-6 text-yellow-500" />
+          <h2 className="text-gray-800">你的本地統計</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4 text-center">
+            <p className="text-gray-600 text-sm">完成會話</p>
+            <p className="text-3xl font-bold text-purple-600">{currentUserSessions}</p>
+            <p className="text-xs text-gray-500 mt-1">次</p>
+          </div>
+          <div className="bg-gradient-to-br from-orange-50 to-pink-50 rounded-xl p-4 text-center">
+            <p className="text-gray-600 text-sm">總積分</p>
+            <p className="text-3xl font-bold text-orange-600">{currentUser.totalPoints}</p>
+            <p className="text-xs text-gray-500 mt-1">分</p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 text-center mt-3">
+          ℹ️ 排行榜數據說明：學校和全國排行為模擬數據，校內排行為本地多用戶數據。
+        </p>
+      </div>
 
       {/* 提示 */}
       <div className="mt-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl p-4 text-center">
