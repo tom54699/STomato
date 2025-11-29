@@ -72,9 +72,27 @@ export default function App() {
     setCurrentPage('settlement');
   };
 
-  const returnToHome = (note: string) => {
-    // 備註會在這裡處理，可以保存到日誌中
-    // TODO: 將備註保存到焦點日誌
+  const returnToHome = (note: string, completionPercent: number) => {
+    // 更新最後一筆焦點日誌的完成度和備註
+    if (note || completionPercent !== 100) {
+      const raw = localStorage.getItem('focusLogs');
+      if (raw) {
+        try {
+          const logs = JSON.parse(raw) as Array<any>;
+          if (logs.length > 0) {
+            // 更新最後一筆日誌
+            logs[logs.length - 1] = {
+              ...logs[logs.length - 1],
+              note: note || undefined,
+              completionPercent: completionPercent
+            };
+            localStorage.setItem('focusLogs', JSON.stringify(logs));
+          }
+        } catch (error) {
+          console.warn('Failed to update focusLogs', error);
+        }
+      }
+    }
     setSettlementData(null);
     setCurrentPage('home');
   };

@@ -9,7 +9,7 @@ type SettlementProps = {
   planTitle?: string;
   planPercent?: number;
   planId?: string;
-  onReturnHome: (note: string) => void;
+  onReturnHome: (note: string, completionPercent: number) => void;
 };
 
 export function Settlement({
@@ -59,7 +59,7 @@ export function Settlement({
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* 返回按鈕 */}
       <button
-        onClick={() => onReturnHome(note)}
+        onClick={() => onReturnHome(note, completionPercent)}
         className="fixed top-4 left-4 z-40 bg-white rounded-full p-3 shadow-md hover:shadow-lg transition-all active:scale-95"
       >
         <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -117,6 +117,16 @@ export function Settlement({
           </div>
         </div>
 
+        {/* 計畫卡片（如果有計畫） */}
+        {planTitle && (
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border border-emerald-100">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-semibold text-emerald-700">📚 關聯計畫</span>
+            </div>
+            <p className="text-sm text-gray-700 font-medium truncate">{planTitle}</p>
+          </div>
+        )}
+
         {/* 完成度滑塊 */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
           <div className="flex items-center justify-between mb-4">
@@ -160,7 +170,7 @@ export function Settlement({
       {/* 底部返回按鈕 */}
       <div className="max-w-md mx-auto px-6 pb-8">
         <button
-          onClick={() => onReturnHome(note)}
+          onClick={() => onReturnHome(note, completionPercent)}
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold text-lg shadow-lg hover:shadow-xl active:scale-95 transition-all"
         >
           回到首頁 🏠
