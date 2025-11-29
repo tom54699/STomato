@@ -411,9 +411,10 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
           }}
         >
           <div
-            className="bg-white rounded-t-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom duration-300"
+            className="bg-white rounded-t-3xl shadow-2xl w-full max-w-md overflow-y-auto animate-in slide-in-from-bottom duration-300"
             style={{
-              animation: 'slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              animation: 'slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              maxHeight: 'calc(100vh - 80px)'
             }}
             onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => {
@@ -460,7 +461,7 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
               <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/10 rounded-full"></div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 pb-24">
               {/* 積分顯示 - 核心焦點 */}
               <div className="text-center">
                 <p className="text-gray-600 text-sm mb-2">本次獲得</p>
@@ -498,8 +499,8 @@ export function Home({ user, onPointsUpdate }: HomeProps) {
                 </div>
               </div>
 
-              {/* 操作按鈕 */}
-              <div className="flex gap-3 pt-2">
+              {/* 操作按鈕 - 固定位置 */}
+              <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-md px-6 flex gap-3 pt-2 bg-white">
                 <button
                   className="flex-1 rounded-2xl border-2 border-gray-200 py-3 text-gray-600 font-semibold hover:bg-gray-50 active:scale-95 transition-all"
                   onClick={() => finalizeFeedback(false)}
