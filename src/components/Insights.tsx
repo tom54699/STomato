@@ -10,10 +10,6 @@ type FocusLog = {
   planId?: string;
   planTitle?: string;
   location?: string;
-  note?: string;
-  completionPercent?: number;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  difficultyBonus?: number;
 };
 
 type StudyPlan = {
@@ -80,54 +76,8 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
     return { weekly: result, totalMinutes, totalSessions, bestDay };
   }, [logs]);
 
-  const planStats = useMemo(() => {
-    const today = new Date();
-    const weekStart = new Date();
-    weekStart.setDate(today.getDate() - 6);
-    const filtered = plans.filter((plan) => {
-      const date = new Date(plan.date);
-      return date >= weekStart && date <= today;
-    });
-    const completed = filtered.filter((plan) => plan.completed).length;
-    return {
-      total: filtered.length,
-      completed,
-      percent: filtered.length ? Math.round((completed / filtered.length) * 100) : 0,
-    };
-  }, [plans]);
-
   const progressPercent = Math.min(100, Math.round((weekStats.totalMinutes / monthlyGoalMinutes) * 100));
   const sessionPercent = Math.min(100, Math.round((weekStats.totalSessions / monthlyGoalSessions) * 100));
-
-  const completionStats = useMemo(() => {
-    const logsWithCompletion = logs.filter((log) => log.completionPercent !== undefined);
-    if (logsWithCompletion.length === 0) {
-      return {
-        avgCompletion: 0,
-        perfectCount: 0,
-        highCount: 0,
-        mediumCount: 0,
-        lowCount: 0,
-        total: 0,
-      };
-    }
-    const avgCompletion = Math.round(
-      logsWithCompletion.reduce((sum, log) => sum + (log.completionPercent || 0), 0) / logsWithCompletion.length
-    );
-    const perfectCount = logsWithCompletion.filter((log) => log.completionPercent === 100).length;
-    const highCount = logsWithCompletion.filter((log) => (log.completionPercent || 0) >= 80 && (log.completionPercent || 0) < 100).length;
-    const mediumCount = logsWithCompletion.filter((log) => (log.completionPercent || 0) >= 50 && (log.completionPercent || 0) < 80).length;
-    const lowCount = logsWithCompletion.filter((log) => (log.completionPercent || 0) < 50).length;
-
-    return {
-      avgCompletion,
-      perfectCount,
-      highCount,
-      mediumCount,
-      lowCount,
-      total: logsWithCompletion.length,
-    };
-  }, [logs]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 p-4 space-y-5">
@@ -173,15 +123,15 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
             <CalendarRange className="w-5 h-5 text-orange-500" />
             <h2 className="text-gray-800">進度追蹤</h2>
           </div>
-          <div className="bg-gray-100 rounded-full p-1">
+          <div className="bg-gray-100 rounded-full p-1.5 flex gap-1">
             <button
-              className={`px-3 py-1 rounded-full text-sm ${view === 'week' ? 'bg-white shadow text-orange-500' : 'text-gray-500'}`}
+              className={`w-16 py-2 rounded-full text-sm font-medium transition-all ${view === 'week' ? 'bg-white shadow-md text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
               onClick={() => setView('week')}
             >
               週
             </button>
             <button
-              className={`px-3 py-1 rounded-full text-sm ${view === 'month' ? 'bg-white shadow text-orange-500' : 'text-gray-500'}`}
+              className={`w-16 py-2 rounded-full text-sm font-medium transition-all ${view === 'month' ? 'bg-white shadow-md text-orange-500' : 'text-gray-500 hover:text-gray-700'}`}
               onClick={() => setView('month')}
             >
               月
@@ -189,18 +139,39 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
           </div>
         </div>
         {view === 'week' ? (
-          <div className="grid grid-cols-7 gap-3">
-            {weekStats.weekly.map((record) => (
-              <div key={record.dateStr} className="text-center">
-                <div className="h-24 w-10 mx-auto bg-gray-100 rounded-full flex flex-col-reverse overflow-hidden">
+          <div className="grid grid-cols-7 gap-4 py-2">
+            {weekStats.weekly.map((record, index) => {
+              const barHeight = record.minutes > 0 ? Math.max(15, (record.minutes / 180) * 100) : 3;
+              return (
+                <div key={record.dateStr} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#f97316', marginBottom: '6px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {record.minutes > 0 ? record.minutes : ''}
+                  </div>
                   <div
-                    className="bg-gradient-to-t from-orange-400 to-pink-400"
-                    style={{ height: `${Math.min(100, (record.minutes / 180) * 100)}%` }}
-                  ></div>
+                    style={{
+                      width: '32px',
+                      height: '80px',
+                      backgroundColor: '#e5e7eb',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: `${barHeight}%`,
+                        background: 'linear-gradient(to top, #fb923c, #f97316)',
+                        borderRadius: '0 0 4px 4px'
+                      }}
+                    ></div>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px', fontWeight: '500', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>週{record.label}</div>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">週{record.label}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="space-y-3">
@@ -228,104 +199,12 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
 
       <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
         <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-teal-500" />
-          <h2 className="text-gray-800">完成度分析</h2>
-        </div>
-        {completionStats.total > 0 ? (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-teal-50 rounded-2xl p-4">
-                <p className="text-teal-600 text-sm">平均完成度</p>
-                <p className="text-4xl font-bold text-teal-700">{completionStats.avgCompletion}%</p>
-              </div>
-              <div className="bg-blue-50 rounded-2xl p-4">
-                <p className="text-blue-600 text-sm">統計番茄鐘</p>
-                <p className="text-4xl font-bold text-blue-700">{completionStats.total}</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">✨</span>
-                  <span className="text-gray-600">完美完成 (100%)</span>
-                </div>
-                <span className="font-bold text-gray-800">{completionStats.perfectCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🌟</span>
-                  <span className="text-gray-600">高完成度 (80-99%)</span>
-                </div>
-                <span className="font-bold text-gray-800">{completionStats.highCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">💪</span>
-                  <span className="text-gray-600">中等完成度 (50-79%)</span>
-                </div>
-                <span className="font-bold text-gray-800">{completionStats.mediumCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📈</span>
-                  <span className="text-gray-600">需要改進 (&lt;50%)</span>
-                </div>
-                <span className="font-bold text-gray-800">{completionStats.lowCount}</span>
-              </div>
-            </div>
-            <div className="bg-teal-50 border border-teal-100 rounded-xl p-3 text-sm text-teal-700">
-              你已記錄 {completionStats.total} 次番茄鐘的完成度。持續紀錄能幫助你了解學習效率。
-            </div>
-          </>
-        ) : (
-          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center text-gray-500 text-sm">
-            <p>還沒有完成度紀錄</p>
-            <p className="text-xs text-gray-400 mt-1">完成番茄鐘並在結算頁面記錄完成度後就會顯示分析</p>
-          </div>
-        )}
-      </section>
-
-      <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-blue-500" />
-          <h2 className="text-gray-800">近期學習備註</h2>
-        </div>
-        {logs.filter((log) => log.note).length > 0 ? (
-          <div className="space-y-3 max-h-64 overflow-y-auto">
-            {logs
-              .filter((log) => log.note)
-              .slice(0, 10)
-              .map((log) => (
-                <div key={log.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">{log.planTitle || '自由番茄鐘'}</p>
-                      <p className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleString()}</p>
-                    </div>
-                    <span className="bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs font-medium">
-                      {log.completionPercent || 100}%
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{log.note}</p>
-                </div>
-              ))}
-          </div>
-        ) : (
-          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center text-gray-500 text-sm">
-            <p>還沒有學習備註</p>
-            <p className="text-xs text-gray-400 mt-1">完成番茄鐘並在結算頁面添加備註，記錄你的學習心得</p>
-          </div>
-        )}
-      </section>
-
-      <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
-        <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-500" />
           <h2 className="text-gray-800">下一步建議</h2>
         </div>
         <ul className="space-y-3 text-gray-600 text-sm">
           <li>．固定在最佳表現日（週{weekStats.bestDay.label}）的時間帶進行進階任務</li>
-          <li>．維持每週至少 {planStats.total || 3} 項讀書計畫，已完成 {planStats.percent}%</li>
+          <li>．維持每週穩定的讀書計畫，幫助建立學習習慣</li>
           <li>．設定新的每月目標（例如 70 次番茄鐘），洞察頁會持續紀錄進度</li>
         </ul>
       </section>
@@ -335,14 +214,10 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
           <Activity className="w-5 h-5 text-green-500" />
           <h2 className="text-gray-800">成就徽章</h2>
         </div>
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-2 gap-4 text-center">
           <div className={`rounded-2xl p-4 ${weekStats.totalSessions >= 5 ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'}`}>
             <div className="text-3xl mb-2">{weekStats.totalSessions >= 5 ? '✨' : '🔒'}</div>
             <p className="text-xs">本週連續專注</p>
-          </div>
-          <div className={`rounded-2xl p-4 ${planStats.percent >= 80 ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'}`}>
-            <div className="text-3xl mb-2">{planStats.percent >= 80 ? '🏅' : '🔒'}</div>
-            <p className="text-xs">計畫達成率 80%</p>
           </div>
           <div className={`rounded-2xl p-4 ${weekStats.totalMinutes >= 300 ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'}`}>
             <div className="text-3xl mb-2">{weekStats.totalMinutes >= 300 ? '🔥' : '🔒'}</div>
@@ -350,18 +225,6 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
           </div>
         </div>
       </section>
-
-      {/* 查看完整歷史 */}
-      {onViewHistory && (
-        <div className="mt-6 mb-8">
-          <button
-            onClick={onViewHistory}
-            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2"
-          >
-            📊 查看完整焦點歷史
-          </button>
-        </div>
-      )}
     </div>
   );
 }

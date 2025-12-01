@@ -7,11 +7,8 @@ type SettlementProps = {
   sessionMinutes: number;
   pointsEarned: number;
   planTitle?: string;
-  planPercent?: number;
   planId?: string;
-  previousNote?: string;
-  previousCompletionPercent?: number;
-  onReturnHome: (note: string, completionPercent: number) => void;
+  onReturnHome: () => void;
 };
 
 export function Settlement({
@@ -19,16 +16,11 @@ export function Settlement({
   sessionMinutes,
   pointsEarned,
   planTitle,
-  planPercent = 0,
   planId,
-  previousNote,
-  previousCompletionPercent = 100,
   onReturnHome
 }: SettlementProps) {
   const [isAnimating, setIsAnimating] = useState(true);
   const [displayPoints, setDisplayPoints] = useState(0);
-  const [note, setNote] = useState(previousNote || '');
-  const [completionPercent, setCompletionPercent] = useState(previousCompletionPercent);
 
   // 數字滾動動畫
   useEffect(() => {
@@ -63,7 +55,7 @@ export function Settlement({
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* 返回按鈕 */}
       <button
-        onClick={() => onReturnHome(note, completionPercent)}
+        onClick={onReturnHome}
         className="fixed top-4 left-4 z-40 bg-white rounded-full p-3 shadow-md hover:shadow-lg transition-all active:scale-95"
       >
         <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -131,50 +123,16 @@ export function Settlement({
           </div>
         )}
 
-        {/* 完成度滑塊 */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-blue-500" />
-              <p className="text-xs text-gray-600">番茄鐘完成度</p>
-            </div>
-            <p className="text-sm font-bold text-blue-600">{completionPercent}%</p>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            value={completionPercent}
-            onChange={(e) => setCompletionPercent(Number(e.target.value))}
-            className="w-full h-3 bg-blue-200 rounded-full appearance-none cursor-pointer accent-blue-500"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-3 px-1">
-            <span>未完成</span>
-            <span>部分完成</span>
-            <span>全部完成</span>
-          </div>
-          <p className="text-xs text-gray-400 text-center mt-3">你原本計畫要完成的事項達成了多少？</p>
-        </div>
-
-        {/* 備註欄位 */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100">
-          <p className="text-xs text-gray-600 mb-2">備註（可選）</p>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="記錄本次學習的心得、遇到的困難或其他備註..."
-            className="w-full bg-white rounded-xl p-3 text-sm text-gray-700 placeholder-gray-400 border border-gray-200 focus:border-purple-300 focus:ring-2 focus:ring-purple-100 focus:outline-none resize-none"
-            rows={3}
-          />
-          <p className="text-xs text-gray-400 mt-2">{note.length}/200</p>
+        {/* 結算說明 */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100 text-sm text-gray-600">
+          <p>持續記錄番茄鐘即可在洞察頁看到趨勢分析，若是與讀書計畫連動會自動標記為完成。</p>
         </div>
       </div>
 
       {/* 底部返回按鈕 */}
       <div className="max-w-md mx-auto px-6 pb-8">
         <button
-          onClick={() => onReturnHome(note, completionPercent)}
+          onClick={onReturnHome}
           className="w-full py-4 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold text-lg shadow-lg hover:shadow-xl active:scale-95 transition-all"
         >
           回到首頁 🏠
