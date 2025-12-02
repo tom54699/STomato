@@ -13,6 +13,9 @@ type StudyPlan = {
   reminderDateTime: string; // YYYY-MM-DDTHH:MM:SS（完整時間戳用於檢查）
   completed: boolean;
   reminderTriggered: boolean;
+  targetMinutes?: number; // 計畫總時長（分鐘）- 用於累積追蹤
+  completedMinutes?: number; // 已完成時長（分鐘）
+  pomodoroCount?: number; // 完成的番茄鐘數量
 };
 
 type StudyPlannerProps = {
@@ -273,6 +276,9 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       reminderDateTime: reminderDateTime,
       completed: false,
       reminderTriggered: false,
+      targetMinutes: form.duration, // 計畫總時長
+      completedMinutes: 0, // 已完成時長初始為0
+      pomodoroCount: 0, // 番茄鐘數量初始為0
     };
     setPlans([newPlan, ...plans]);
     // 清空表單，保持日期不變，重置提醒時間

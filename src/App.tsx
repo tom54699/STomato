@@ -32,10 +32,7 @@ export default function App() {
     sessionMinutes: number;
     pointsEarned: number;
     planTitle?: string;
-    planPercent?: number;
     planId?: string;
-    previousNote?: string;
-    previousCompletionPercent?: number;
   } | null>(null);
 
   // 模擬登入狀態檢查
@@ -69,34 +66,13 @@ export default function App() {
     sessionMinutes: number;
     pointsEarned: number;
     planTitle?: string;
-    planPercent?: number;
     planId?: string;
   }) => {
     setSettlementData(data);
     setCurrentPage('settlement');
   };
 
-  const returnToHome = (note: string, completionPercent: number) => {
-    // 更新最後一筆焦點日誌的完成度和備註
-    if (note || completionPercent !== 100) {
-      const raw = localStorage.getItem('focusLogs');
-      if (raw) {
-        try {
-          const logs = JSON.parse(raw) as Array<any>;
-          if (logs.length > 0) {
-            // 更新最後一筆日誌
-            logs[logs.length - 1] = {
-              ...logs[logs.length - 1],
-              note: note || undefined,
-              completionPercent: completionPercent
-            };
-            localStorage.setItem('focusLogs', JSON.stringify(logs));
-          }
-        } catch (error) {
-          console.warn('Failed to update focusLogs', error);
-        }
-      }
-    }
+  const returnToHome = () => {
     setSettlementData(null);
     setCurrentPage('home');
   };
@@ -113,16 +89,13 @@ export default function App() {
           sessionMinutes={settlementData.sessionMinutes}
           pointsEarned={settlementData.pointsEarned}
           planTitle={settlementData.planTitle}
-          planPercent={settlementData.planPercent}
           planId={settlementData.planId}
-          previousNote={settlementData.previousNote}
-          previousCompletionPercent={settlementData.previousCompletionPercent}
           onReturnHome={returnToHome}
         />
       ) : (
         <>
           <div className="max-w-md mx-auto pb-24">
-            {currentPage === 'home' && <Home user={currentUser} onPointsUpdate={updateUserPoints} onGoToSettlement={goToSettlement} />}
+            {currentPage === 'home' && <Home user={currentUser} onPointsUpdate={updateUserPoints} onGoToSettlement={goToSettlement} onNavigateToPlanner={() => setCurrentPage('planner')} />}
             {currentPage === 'planner' && <StudyPlanner user={currentUser} />}
             {currentPage === 'schedule' && <Schedule />}
             {currentPage === 'insights' && <Insights user={currentUser} onViewHistory={() => setCurrentPage('history')} />}

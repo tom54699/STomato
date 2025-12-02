@@ -10,6 +10,7 @@ type HomeProps = {
     pointsEarned: number;
     planTitle?: string;
   }) => void;
+  onNavigateToPlanner?: () => void;
 };
 
 type StudyPlan = {
@@ -21,6 +22,9 @@ type StudyPlan = {
   reminderTime: string;
   location?: string;
   completed: boolean;
+  targetMinutes?: number; // 計畫總時長（分鐘）
+  completedMinutes?: number; // 已完成時長（分鐘）
+  pomodoroCount?: number; // 完成的番茄鐘數量
 };
 
 type FocusLog = {
@@ -33,7 +37,7 @@ type FocusLog = {
   location?: string;
 };
 
-export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
+export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlanner }: HomeProps) {
   const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -125,8 +129,34 @@ export function Home({ user, onPointsUpdate, onGoToSettlement }: HomeProps) {
     };
     recordFocusLog(log);
 
-    if (linkedPlan) {
-      updatePlanCompletion(linkedPlan.id);
+    // 累積追蹤：更新計畫的完成進度
+    if (linkedPlan && linkedPlan.id) {
+      const raw = localStorage.getItem('studyPlans');
+      if (raw) {
+        try {
+          let allPlans: StudyPlan[] = JSON.parse(raw);
+          allPlans = allPlans.map((plan) => {
+            if (plan.id === linkedPlan.id) {
+              const newCompletedMinutes = (plan.completedMinutes || 0) + initialMinutes;
+              const newPomodoroCount = (plan.pomodoroCount || 0) + 1;
+              const shouldComplete = plan.targetMinutes && newCompletedMinutes >= plan.targetMinutes;
+              return {
+                ...plan,
+                completedMinutes: newCompletedMinutes,
+                pomodoroCount: newPomodoroCount,
+                completed: shouldComplete || plan.completed, // 達到目標時長時自動完成
+              };
+            }
+            return plan;
+          });
+          localStorage.setItem('studyPlans', JSON.stringify(allPlans));
+          // 更新今日計畫顯示
+          const updated = allPlans.filter((plan) => plan.date === todayKey);
+          setTodayPlans(updated);
+        } catch (error) {
+          console.warn('Failed to update plan progress', error);
+        }
+      }
     }
 
     onGoToSettlement({
@@ -282,7 +312,7 @@ const toggleTimer = () => {
     }
   };
 
-  const updatePlanCompletion = (planId: string): void => {
+  const togglePlanCompletion = (planId: string): void => {
     const raw = localStorage.getItem('studyPlans');
     if (!raw) return;
     let nextPlans: StudyPlan[] = [];
@@ -293,7 +323,7 @@ const toggleTimer = () => {
       return;
     }
     const updated = nextPlans.map((plan) =>
-      plan.id === planId ? { ...plan, completed: true } : plan
+      plan.id === planId ? { ...plan, completed: !plan.completed } : plan
     );
     localStorage.setItem('studyPlans', JSON.stringify(updated));
     const filtered = updated.filter((plan) => plan.date === todayKey);
@@ -348,62 +378,6 @@ const toggleTimer = () => {
         </div>
       </div>
 
-      {/* Today's Plans Section - Only show when not running */}
-      {!isRunning && todayPlans.length > 0 && (
-        <div className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Target className="w-6 h-6 text-indigo-500" />
-              <h3 className="text-gray-800 text-lg font-bold">今日計畫</h3>
-            </div>
-            <span className="text-sm text-gray-500 bg-indigo-50 px-3 py-1 rounded-full">
-              完成 {computePlanPercent(todayPlans)}%
-            </span>
-          </div>
-          <div className="space-y-3">
-            {todayPlans.map((plan) => (
-              <div
-                key={plan.id}
-                className={`rounded-2xl p-4 border-2 transition-all ${
-                  plan.completed
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 hover:shadow-md'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-indigo-600 font-semibold">
-                        {plan.startTime} - {plan.endTime}
-                      </span>
-                      {plan.completed && <span className="text-xs">✅</span>}
-                    </div>
-                    <p className={`font-medium ${plan.completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
-                      {plan.title}
-                    </p>
-                    {plan.location && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs text-gray-500">{plan.location}</span>
-                      </div>
-                    )}
-                  </div>
-                  {!plan.completed && (
-                    <button
-                      onClick={() => startTimerWithPlan(plan.id, 25)}
-                      className="ml-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2"
-                    >
-                      <Play className="w-4 h-4" />
-                      開始
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Quick Start & New Plan Buttons - Only show when not running */}
       {!isRunning && (
         <div className="grid grid-cols-2 gap-4">
@@ -418,7 +392,7 @@ const toggleTimer = () => {
             </div>
           </button>
           <button
-            onClick={() => alert('新建計畫功能開發中...')}
+            onClick={() => onNavigateToPlanner?.()}
             className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white p-6 rounded-3xl shadow-lg hover:shadow-xl active:scale-95 transition-all"
           >
             <div className="flex flex-col items-center gap-2">
@@ -610,6 +584,75 @@ const toggleTimer = () => {
           </button>
         </div>
       </div>
+
+      {/* Today's Plans Section - Moved to bottom */}
+      {todayPlans.length > 0 && (
+        <div className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-6 h-6 text-indigo-500" />
+              <h3 className="text-gray-800 text-lg font-bold">今日計畫</h3>
+            </div>
+            <span className="text-sm text-gray-500 bg-indigo-50 px-3 py-1 rounded-full">
+              完成 {computePlanPercent(todayPlans)}%
+            </span>
+          </div>
+          <div className="space-y-3">
+            {todayPlans.map((plan) => (
+              <div
+                key={plan.id}
+                className={`rounded-2xl p-4 border-2 transition-all ${
+                  plan.completed
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 hover:shadow-md'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Manual completion checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={plan.completed}
+                    onChange={() => togglePlanCompletion(plan.id)}
+                    className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-indigo-600 font-semibold">
+                        {plan.startTime} - {plan.endTime}
+                      </span>
+                      {/* 顯示累積進度 */}
+                      {plan.targetMinutes && plan.targetMinutes > 0 && (
+                        <span className="text-xs text-orange-600 font-semibold">
+                          已完成 {plan.completedMinutes || 0}/{plan.targetMinutes} 分鐘
+                          {plan.pomodoroCount && plan.pomodoroCount > 0 ? ` (${plan.pomodoroCount}🍅)` : ''}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`font-medium ${plan.completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+                      {plan.title}
+                    </p>
+                    {plan.location && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-500">{plan.location}</span>
+                      </div>
+                    )}
+                  </div>
+                  {!plan.completed && !isRunning && (
+                    <button
+                      onClick={() => startTimerWithPlan(plan.id, 25)}
+                      className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      開始
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );
