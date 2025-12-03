@@ -629,13 +629,13 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirm.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full pointer-events-auto border-2 border-gray-200">
             {/* Icon & Content */}
-            <div className="p-6 text-center">
-              <div className="text-5xl mb-3">🗑️</div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">刪除計畫</h3>
-              <p className="text-gray-700 font-medium mb-2">
+            <div className="p-5 text-center">
+              <div className="text-4xl mb-2">🗑️</div>
+              <h3 className="text-base font-bold text-gray-800 mb-2">刪除計畫</h3>
+              <p className="text-gray-700 font-medium text-sm mb-2">
                 {deleteConfirm.planTitle}
               </p>
               {deleteConfirm.hasData && (
@@ -651,7 +651,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                 onClick={() => {
                   setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
                 }}
-                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
+                className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
               >
                 取消
               </button>
@@ -660,7 +660,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                   removePlan(deleteConfirm.planId);
                   setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
                 }}
-                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
               >
                 刪除
               </button>

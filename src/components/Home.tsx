@@ -775,17 +775,17 @@ const toggleTimer = () => {
 
       {/* Confirmation Dialog */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full pointer-events-auto border-2 border-gray-200">
             {/* Icon & Title */}
-            <div className="p-6 text-center">
-              <div className="text-5xl mb-3">
+            <div className="p-5 text-center">
+              <div className="text-4xl mb-2">
                 {confirmDialog.type === 'suggest' ? '💡' : '⚠️'}
               </div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">
+              <h3 className="text-base font-bold text-gray-800 mb-2">
                 {confirmDialog.type === 'suggest' ? '建議' : '提醒'}
               </h3>
-              <p className="text-gray-600 text-sm leading-relaxed">
+              <p className="text-gray-600 text-xs leading-relaxed">
                 {confirmDialog.message}
               </p>
             </div>
@@ -801,7 +801,7 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
+                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
                   >
                     {confirmDialog.suggestedMinutes} 分鐘
                   </button>
@@ -812,7 +812,7 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
+                    className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
                   >
                     {confirmDialog.originalMinutes} 分鐘
                   </button>
@@ -823,7 +823,7 @@ const toggleTimer = () => {
                     onClick={() => {
                       setConfirmDialog({ show: false, type: 'warning', message: '' });
                     }}
-                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
+                    className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
                   >
                     取消
                   </button>
@@ -834,7 +834,7 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'warning', message: '' });
                     }}
-                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
                   >
                     確定
                   </button>
