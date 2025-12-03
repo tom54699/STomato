@@ -649,47 +649,17 @@ const toggleTimer = () => {
                     )}
                   </div>
                   {!plan.completed && !isRunning && (() => {
-                    // 檢查計畫日期
-                    const now = new Date();
-                    const planDate = new Date(plan.date);
-                    const today = new Date();
+                    // 如果計畫有設定目標時長，檢查剩餘時長
+                    if (plan.targetMinutes && plan.targetMinutes > 0) {
+                      const completedMinutes = plan.completedMinutes || 0;
+                      const remainingMinutes = plan.targetMinutes - completedMinutes;
 
-                    // 重置時間部分以便比較日期
-                    planDate.setHours(0, 0, 0, 0);
-                    today.setHours(0, 0, 0, 0);
-
-                    const isToday = planDate.getTime() === today.getTime();
-                    const isFuture = planDate.getTime() > today.getTime();
-
-                    // 未來日期的計畫：顯示正常按鈕
-                    if (isFuture) {
-                      return (
-                        <button
-                          onClick={() => startTimerWithPlan(plan.id, minutes)}
-                          className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
-                          title={`開始 ${minutes} 分鐘番茄鐘（可在上方圓環調整）`}
-                        >
-                          <Play className="w-4 h-4" />
-                          <span className="text-sm font-bold">{minutes}</span>
-                        </button>
-                      );
-                    }
-
-                    // 今天的計畫：檢查剩餘時間
-                    if (isToday) {
-                      const [endHour, endMinute] = plan.endTime.split(':').map(Number);
-                      const planEndTime = new Date();
-                      planEndTime.setHours(endHour, endMinute, 0, 0);
-
-                      const remainingMs = planEndTime.getTime() - now.getTime();
-                      const remainingMinutes = Math.floor(remainingMs / 60000);
-
-                      // 如果已過期或剩餘時間不足 5 分鐘，不顯示按鈕
-                      if (remainingMinutes < 5) {
+                      // 如果已達成目標時長，不顯示按鈕（應該已自動完成）
+                      if (remainingMinutes <= 0) {
                         return null;
                       }
 
-                      // 取較小值：圓環設定的時間 vs 剩餘時間
+                      // 取較小值：圓環設定的時間 vs 計畫剩餘時長
                       const maxAllowedMinutes = Math.min(minutes, remainingMinutes);
                       const isAdjusted = maxAllowedMinutes < minutes;
 
@@ -716,8 +686,17 @@ const toggleTimer = () => {
                       );
                     }
 
-                    // 過去日期的計畫：不顯示按鈕
-                    return null;
+                    // 沒有設定目標時長的計畫：顯示正常按鈕
+                    return (
+                      <button
+                        onClick={() => startTimerWithPlan(plan.id, minutes)}
+                        className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                        title={`開始 ${minutes} 分鐘番茄鐘（可在上方圓環調整）`}
+                      >
+                        <Play className="w-4 h-4" />
+                        <span className="text-sm font-bold">{minutes}</span>
+                      </button>
+                    );
                   })()}
                 </div>
               </div>
