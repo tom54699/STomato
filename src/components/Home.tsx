@@ -649,45 +649,75 @@ const toggleTimer = () => {
                     )}
                   </div>
                   {!plan.completed && !isRunning && (() => {
-                    // 計算計畫剩餘時間
+                    // 檢查計畫日期
                     const now = new Date();
-                    const [endHour, endMinute] = plan.endTime.split(':').map(Number);
-                    const planEndTime = new Date();
-                    planEndTime.setHours(endHour, endMinute, 0, 0);
+                    const planDate = new Date(plan.date);
+                    const today = new Date();
 
-                    const remainingMs = planEndTime.getTime() - now.getTime();
-                    const remainingMinutes = Math.floor(remainingMs / 60000);
+                    // 重置時間部分以便比較日期
+                    planDate.setHours(0, 0, 0, 0);
+                    today.setHours(0, 0, 0, 0);
 
-                    // 如果已過期或剩餘時間不足 5 分鐘，不顯示按鈕
-                    if (remainingMinutes < 5) {
-                      return null;
+                    const isToday = planDate.getTime() === today.getTime();
+                    const isFuture = planDate.getTime() > today.getTime();
+
+                    // 未來日期的計畫：顯示正常按鈕
+                    if (isFuture) {
+                      return (
+                        <button
+                          onClick={() => startTimerWithPlan(plan.id, minutes)}
+                          className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                          title={`開始 ${minutes} 分鐘番茄鐘（可在上方圓環調整）`}
+                        >
+                          <Play className="w-4 h-4" />
+                          <span className="text-sm font-bold">{minutes}</span>
+                        </button>
+                      );
                     }
 
-                    // 取較小值：圓環設定的時間 vs 剩餘時間
-                    const maxAllowedMinutes = Math.min(minutes, remainingMinutes);
-                    const isAdjusted = maxAllowedMinutes < minutes;
+                    // 今天的計畫：檢查剩餘時間
+                    if (isToday) {
+                      const [endHour, endMinute] = plan.endTime.split(':').map(Number);
+                      const planEndTime = new Date();
+                      planEndTime.setHours(endHour, endMinute, 0, 0);
 
-                    return (
-                      <button
-                        onClick={() => startTimerWithPlan(plan.id, maxAllowedMinutes)}
-                        className={`group relative bg-white border-2 ${
-                          isAdjusted ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
-                        } ${
-                          isAdjusted ? 'text-orange-600' : 'text-indigo-600'
-                        } hover:text-white hover:bg-gradient-to-r ${
-                          isAdjusted ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
-                        } px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2`}
-                        title={
-                          isAdjusted
-                            ? `計畫剩餘 ${remainingMinutes} 分鐘，已自動調整為 ${maxAllowedMinutes} 分鐘`
-                            : `開始 ${maxAllowedMinutes} 分鐘番茄鐘（可在上方圓環調整）`
-                        }
-                      >
-                        <Play className="w-4 h-4" />
-                        <span className="text-sm font-bold">{maxAllowedMinutes}</span>
-                        {isAdjusted && <span className="text-xs">⏱️</span>}
-                      </button>
-                    );
+                      const remainingMs = planEndTime.getTime() - now.getTime();
+                      const remainingMinutes = Math.floor(remainingMs / 60000);
+
+                      // 如果已過期或剩餘時間不足 5 分鐘，不顯示按鈕
+                      if (remainingMinutes < 5) {
+                        return null;
+                      }
+
+                      // 取較小值：圓環設定的時間 vs 剩餘時間
+                      const maxAllowedMinutes = Math.min(minutes, remainingMinutes);
+                      const isAdjusted = maxAllowedMinutes < minutes;
+
+                      return (
+                        <button
+                          onClick={() => startTimerWithPlan(plan.id, maxAllowedMinutes)}
+                          className={`group relative bg-white border-2 ${
+                            isAdjusted ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
+                          } ${
+                            isAdjusted ? 'text-orange-600' : 'text-indigo-600'
+                          } hover:text-white hover:bg-gradient-to-r ${
+                            isAdjusted ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
+                          } px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2`}
+                          title={
+                            isAdjusted
+                              ? `計畫剩餘 ${remainingMinutes} 分鐘，已自動調整為 ${maxAllowedMinutes} 分鐘`
+                              : `開始 ${maxAllowedMinutes} 分鐘番茄鐘（可在上方圓環調整）`
+                          }
+                        >
+                          <Play className="w-4 h-4" />
+                          <span className="text-sm font-bold">{maxAllowedMinutes}</span>
+                          {isAdjusted && <span className="text-xs">⏱️</span>}
+                        </button>
+                      );
+                    }
+
+                    // 過去日期的計畫：不顯示按鈕
+                    return null;
                   })()}
                 </div>
               </div>
