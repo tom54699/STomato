@@ -640,11 +640,12 @@ const toggleTimer = () => {
                   </div>
                   {!plan.completed && !isRunning && (
                     <button
-                      onClick={() => startTimerWithPlan(plan.id, 25)}
-                      className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2"
+                      onClick={() => startTimerWithPlan(plan.id, minutes)}
+                      className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                      title={`開始 ${minutes} 分鐘番茄鐘（可在上方圓環調整）`}
                     >
                       <Play className="w-4 h-4" />
-                      開始
+                      <span className="text-sm font-bold">{minutes}</span>
                     </button>
                   )}
                 </div>

@@ -401,35 +401,41 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           </div>
 
           <div>
-            <label className="text-sm text-gray-500">學習時長</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block flex items-center gap-2">
+              <span className="text-blue-500">⏱️</span>
+              學習時長
+            </label>
             <select
-              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              className="w-full rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer"
               value={form.duration}
               onChange={(event) => setForm((prev) => ({ ...prev, duration: Number(event.target.value) }))}
             >
-              <option value={30}>30分鐘</option>
-              <option value={45}>45分鐘</option>
-              <option value={60}>1小時</option>
-              <option value={90}>1.5小時</option>
-              <option value={120}>2小時</option>
-              <option value={150}>2.5小時</option>
-              <option value={180}>3小時</option>
+              <option value={30}>⏰ 30 分鐘</option>
+              <option value={45}>⏰ 45 分鐘</option>
+              <option value={60}>⏰ 1 小時</option>
+              <option value={90}>⏰ 1.5 小時</option>
+              <option value={120}>⏰ 2 小時</option>
+              <option value={150}>⏰ 2.5 小時</option>
+              <option value={180}>⏰ 3 小時</option>
             </select>
           </div>
 
           {/* 開始時間下拉選單 */}
           <div>
-            <label className="text-sm text-gray-500">選擇開始時間</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block flex items-center gap-2">
+              <span className="text-green-500">🕐</span>
+              選擇開始時間
+            </label>
             <select
-              className="w-full rounded-2xl border border-gray-200 px-3 py-2"
+              className="w-full rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
               value={form.start}
               onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
             >
-              <option value="">-- 請選擇開始時間 --</option>
+              <option value="">✨ 請選擇開始時間 ✨</option>
               {timeSlotStatus.map((slot) => (
                 <option key={slot.time} value={slot.time} disabled={!slot.available}>
-                  {slot.time}
-                  {!slot.available && ` (與${slot.conflictingPlan?.title}衝突)`}
+                  {slot.available ? '✅' : '❌'} {slot.time}
+                  {!slot.available && ` - 與${slot.conflictingPlan?.title}衝突`}
                 </option>
               ))}
             </select>
