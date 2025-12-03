@@ -659,9 +659,52 @@ const toggleTimer = () => {
                         return null;
                       }
 
-                      // 檢查是否超過剩餘時間（僅用於顯示警告顏色，不強制限制）
-                      const isExceeding = minutes > remainingMinutes;
+                      // 情況 1：計畫本身剩餘 ≤ 10 分鐘，讓使用者自己決定
+                      if (remainingMinutes <= 10) {
+                        const isExceeding = minutes > remainingMinutes;
+                        return (
+                          <button
+                            onClick={() => startTimerWithPlan(plan.id, minutes)}
+                            className={`group relative bg-white border-2 ${
+                              isExceeding ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
+                            } ${
+                              isExceeding ? 'text-orange-600' : 'text-indigo-600'
+                            } hover:text-white hover:bg-gradient-to-r ${
+                              isExceeding ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
+                            } px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2`}
+                            title={
+                              isExceeding
+                                ? `⚠️ 計畫剩餘 ${remainingMinutes} 分鐘，圓環設定 ${minutes} 分鐘會超過`
+                                : `開始 ${minutes} 分鐘番茄鐘（計畫剩餘 ${remainingMinutes} 分鐘）`
+                            }
+                          >
+                            <Play className="w-4 h-4" />
+                            <span className="text-sm font-bold">{minutes}</span>
+                            {isExceeding && <span className="text-xs">⚠️</span>}
+                          </button>
+                        );
+                      }
 
+                      // 情況 2：剩餘 > 10 分鐘，檢查是否會剩下零頭
+                      const remainingAfter = remainingMinutes - minutes;
+
+                      // 如果完成後會剩餘 < 10 分鐘（但 > 0），建議一次完成
+                      if (remainingAfter > 0 && remainingAfter < 10) {
+                        return (
+                          <button
+                            onClick={() => startTimerWithPlan(plan.id, remainingMinutes)}
+                            className="group relative bg-white border-2 border-green-300 hover:border-green-500 text-green-600 hover:text-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                            title={`💡 建議一次完成剩餘 ${remainingMinutes} 分鐘（否則會剩 ${remainingAfter} 分鐘零頭）`}
+                          >
+                            <Play className="w-4 h-4" />
+                            <span className="text-sm font-bold">{remainingMinutes}</span>
+                            <span className="text-xs">💡</span>
+                          </button>
+                        );
+                      }
+
+                      // 情況 3：正常情況或會超過很多
+                      const isExceeding = minutes > remainingMinutes;
                       return (
                         <button
                           onClick={() => startTimerWithPlan(plan.id, minutes)}
