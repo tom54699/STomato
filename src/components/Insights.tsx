@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { User } from '../App';
-import { BarChart3, Activity, CalendarRange, Sparkles } from 'lucide-react';
+import { BarChart3, Activity, CalendarRange, Sparkles, CheckCircle2, Clock, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 
 type FocusLog = {
   id: string;
@@ -20,6 +20,9 @@ type StudyPlan = {
   endTime: string;
   reminderTime: string;
   completed: boolean;
+  targetMinutes?: number;
+  completedMinutes?: number;
+  pomodoroCount?: number;
 };
 
 type InsightsProps = {
@@ -33,9 +36,14 @@ const monthlyGoalMinutes = 1800;
 const monthlyGoalSessions = 60;
 
 export function Insights({ user, onViewHistory }: InsightsProps) {
+  const [mainTab, setMainTab] = useState<'focus' | 'plans'>('focus');
   const [view, setView] = useState<'week' | 'month'>('week');
   const [logs, setLogs] = useState<FocusLog[]>([]);
   const [plans, setPlans] = useState<StudyPlan[]>([]);
+  const [expandedSections, setExpandedSections] = useState({
+    timeSlot: false,
+    cumulative: false,
+  });
 
   useEffect(() => {
     const savedLogs = localStorage.getItem('focusLogs');
@@ -79,6 +87,79 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
   const progressPercent = Math.min(100, Math.round((weekStats.totalMinutes / monthlyGoalMinutes) * 100));
   const sessionPercent = Math.min(100, Math.round((weekStats.totalSessions / monthlyGoalSessions) * 100));
 
+  // 計畫分析統計
+  const planStats = useMemo(() => {
+    const today = new Date();
+    const weekAgo = new Date();
+    weekAgo.setDate(today.getDate() - 6);
+
+    // 本週計畫
+    const weekPlans = plans.filter(plan => {
+      const planDate = new Date(plan.date);
+      return planDate >= weekAgo && planDate <= today;
+    });
+
+    const completedPlans = weekPlans.filter(p => p.completed);
+    const inProgressPlans = weekPlans.filter(p => !p.completed && (p.completedMinutes || 0) > 0);
+    const notStartedPlans = weekPlans.filter(p => !p.completed && !(p.completedMinutes || 0));
+
+    const completionRate = weekPlans.length > 0 ? Math.round((completedPlans.length / weekPlans.length) * 100) : 0;
+
+    // 科目/標題分析
+    const subjectStats: { [key: string]: { minutes: number; count: number } } = {};
+    logs.forEach(log => {
+      if (log.planTitle) {
+        if (!subjectStats[log.planTitle]) {
+          subjectStats[log.planTitle] = { minutes: 0, count: 0 };
+        }
+        subjectStats[log.planTitle].minutes += log.minutes;
+        subjectStats[log.planTitle].count += 1;
+      }
+    });
+    const sortedSubjects = Object.entries(subjectStats)
+      .sort((a, b) => b[1].minutes - a[1].minutes)
+      .slice(0, 5);
+
+    // 時段分析
+    const timeSlotStats = {
+      morning: { count: 0, completed: 0 },   // 6-12
+      afternoon: { count: 0, completed: 0 }, // 12-18
+      evening: { count: 0, completed: 0 },   // 18-24
+    };
+    weekPlans.forEach(plan => {
+      const hour = parseInt(plan.startTime.split(':')[0]);
+      let slot: 'morning' | 'afternoon' | 'evening' = 'morning';
+      if (hour >= 12 && hour < 18) slot = 'afternoon';
+      else if (hour >= 18) slot = 'evening';
+
+      timeSlotStats[slot].count += 1;
+      if (plan.completed) timeSlotStats[slot].completed += 1;
+    });
+
+    // 累積進度統計
+    const plansWithProgress = weekPlans.filter(p => p.targetMinutes && p.targetMinutes > 0);
+    const avgPomodorosPerPlan = plansWithProgress.length > 0
+      ? Math.round(plansWithProgress.reduce((sum, p) => sum + (p.pomodoroCount || 0), 0) / plansWithProgress.length * 10) / 10
+      : 0;
+    const totalTargetMinutes = plansWithProgress.reduce((sum, p) => sum + (p.targetMinutes || 0), 0);
+    const totalCompletedMinutes = plansWithProgress.reduce((sum, p) => sum + (p.completedMinutes || 0), 0);
+    const overallProgress = totalTargetMinutes > 0 ? Math.round((totalCompletedMinutes / totalTargetMinutes) * 100) : 0;
+
+    return {
+      total: weekPlans.length,
+      completed: completedPlans.length,
+      inProgress: inProgressPlans.length,
+      notStarted: notStartedPlans.length,
+      completionRate,
+      sortedSubjects,
+      timeSlotStats,
+      avgPomodorosPerPlan,
+      overallProgress,
+      totalTargetMinutes,
+      totalCompletedMinutes,
+    };
+  }, [plans, logs]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 p-4 space-y-5">
       <header className="bg-white rounded-3xl shadow-lg p-6">
@@ -86,13 +167,40 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
           <BarChart3 className="w-10 h-10 text-indigo-500" />
           <div>
             <p className="text-gray-500 text-sm">學習洞察</p>
-            <h1 className="text-gray-800 text-xl">專注趨勢報告</h1>
+            <h1 className="text-gray-800 text-xl">數據分析報告</h1>
           </div>
         </div>
         <p className="text-gray-500 mt-2 text-sm">根據最近 7 天紀錄，提供建議與成就</p>
+
+        {/* 主分頁切換 */}
+        <div className="mt-4 bg-gray-100 rounded-2xl p-1.5 flex gap-1">
+          <button
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              mainTab === 'focus'
+                ? 'bg-white shadow-md text-indigo-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setMainTab('focus')}
+          >
+            📊 專注趨勢
+          </button>
+          <button
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              mainTab === 'plans'
+                ? 'bg-white shadow-md text-indigo-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setMainTab('plans')}
+          >
+            📅 計畫分析
+          </button>
+        </div>
       </header>
 
-      <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+      {/* 專注趨勢分頁 */}
+      {mainTab === 'focus' && (
+        <>
+          <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-indigo-500" />
           <h2 className="text-gray-800">累積概況</h2>
@@ -225,6 +333,225 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
           </div>
         </div>
       </section>
+        </>
+      )}
+
+      {/* 計畫分析分頁 */}
+      {mainTab === 'plans' && (
+        <>
+          {/* 完成率總覽 */}
+          <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+              <h2 className="text-gray-800">本週計畫概況</h2>
+            </div>
+
+            {planStats.total === 0 ? (
+              <div className="bg-gray-50 rounded-2xl p-6 text-center">
+                <p className="text-gray-500 text-sm">本週尚未建立任何計畫</p>
+                <p className="text-gray-400 text-xs mt-1">前往「讀書計畫」頁面新增計畫吧！</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-green-50 rounded-2xl p-4 text-center">
+                    <p className="text-green-600 text-2xl font-bold">{planStats.completed}</p>
+                    <p className="text-green-600 text-xs mt-1">已完成</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-2xl p-4 text-center">
+                    <p className="text-blue-600 text-2xl font-bold">{planStats.inProgress}</p>
+                    <p className="text-blue-600 text-xs mt-1">進行中</p>
+                  </div>
+                  <div className="bg-gray-100 rounded-2xl p-4 text-center">
+                    <p className="text-gray-600 text-2xl font-bold">{planStats.notStarted}</p>
+                    <p className="text-gray-600 text-xs mt-1">未開始</p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4 border-2 border-green-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-green-700 text-sm font-medium">完成率</span>
+                    <span className="text-green-700 text-2xl font-bold">{planStats.completionRate}%</span>
+                  </div>
+                  <div className="h-3 bg-white rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-500"
+                      style={{ width: `${planStats.completionRate}%` }}
+                    />
+                  </div>
+                  <p className="text-green-600 text-xs mt-2">本週共 {planStats.total} 個計畫</p>
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* 科目時間分布 */}
+          {planStats.sortedSubjects.length > 0 && (
+            <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-purple-500" />
+                <h2 className="text-gray-800">科目時間分布</h2>
+              </div>
+              <div className="space-y-3">
+                {planStats.sortedSubjects.map(([subject, stats], index) => {
+                  const maxMinutes = planStats.sortedSubjects[0][1].minutes;
+                  const widthPercent = (stats.minutes / maxMinutes) * 100;
+                  const colors = [
+                    'from-purple-400 to-purple-500',
+                    'from-blue-400 to-blue-500',
+                    'from-indigo-400 to-indigo-500',
+                    'from-pink-400 to-pink-500',
+                    'from-orange-400 to-orange-500',
+                  ];
+                  return (
+                    <div key={subject} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-700 font-medium truncate flex-1">{subject}</span>
+                        <span className="text-gray-500 ml-2">{stats.minutes} 分鐘 ({stats.count}🍅)</span>
+                      </div>
+                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full bg-gradient-to-r ${colors[index]} transition-all duration-500`}
+                          style={{ width: `${widthPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-gray-400 text-xs text-center mt-2">顯示前 5 名科目/計畫</p>
+            </section>
+          )}
+
+          {/* 時段分析（可展開） */}
+          {planStats.total > 0 && (
+            <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+              <button
+                className="w-full flex items-center justify-between"
+                onClick={() => setExpandedSections(prev => ({ ...prev, timeSlot: !prev.timeSlot }))}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-orange-500" />
+                  <h2 className="text-gray-800">時段分析</h2>
+                </div>
+                {expandedSections.timeSlot ? (
+                  <ChevronUp className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+
+              {expandedSections.timeSlot && (
+                <div className="space-y-3 pt-2">
+                  {[
+                    { key: 'morning' as const, label: '早上 (6-12點)', emoji: '🌅', color: 'orange' },
+                    { key: 'afternoon' as const, label: '下午 (12-18點)', emoji: '☀️', color: 'yellow' },
+                    { key: 'evening' as const, label: '晚上 (18-24點)', emoji: '🌙', color: 'indigo' },
+                  ].map(({ key, label, emoji, color }) => {
+                    const stats = planStats.timeSlotStats[key];
+                    const rate = stats.count > 0 ? Math.round((stats.completed / stats.count) * 100) : 0;
+                    return (
+                      <div key={key} className={`bg-${color}-50 rounded-2xl p-4`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">
+                            {emoji} {label}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {stats.count} 個計畫
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
+                            <div
+                              className={`h-full bg-${color}-400`}
+                              style={{ width: `${rate}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-gray-600 w-10 text-right">
+                            {rate}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          完成 {stats.completed} / {stats.count}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* 累積進度統計（可展開） */}
+          {planStats.totalTargetMinutes > 0 && (
+            <section className="bg-white rounded-3xl shadow-lg p-6 space-y-4">
+              <button
+                className="w-full flex items-center justify-between"
+                onClick={() => setExpandedSections(prev => ({ ...prev, cumulative: !prev.cumulative }))}
+              >
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-500" />
+                  <h2 className="text-gray-800">累積進度追蹤</h2>
+                </div>
+                {expandedSections.cumulative ? (
+                  <ChevronUp className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+
+              {expandedSections.cumulative && (
+                <div className="space-y-4 pt-2">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-blue-700 text-sm font-medium">整體進度</span>
+                      <span className="text-blue-700 text-xl font-bold">{planStats.overallProgress}%</span>
+                    </div>
+                    <div className="h-3 bg-white rounded-full overflow-hidden mb-2">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-500"
+                        style={{ width: `${planStats.overallProgress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-blue-600">
+                      <span>{planStats.totalCompletedMinutes} 分鐘</span>
+                      <span>目標 {planStats.totalTargetMinutes} 分鐘</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-purple-50 rounded-2xl p-4 text-center">
+                      <p className="text-purple-600 text-2xl font-bold">{planStats.avgPomodorosPerPlan}</p>
+                      <p className="text-purple-600 text-xs mt-1">平均番茄鐘數/計畫</p>
+                    </div>
+                    <div className="bg-pink-50 rounded-2xl p-4 text-center">
+                      <p className="text-pink-600 text-2xl font-bold">
+                        {planStats.totalCompletedMinutes}
+                      </p>
+                      <p className="text-pink-600 text-xs mt-1">累積完成分鐘</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-2xl p-3 text-xs text-gray-600">
+                    💡 提示：長時間計畫可透過多次番茄鐘累積完成
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* 提示：沒有計畫時的引導 */}
+          {planStats.total === 0 && (
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-8 text-center">
+              <div className="text-6xl mb-4">📅</div>
+              <h3 className="text-gray-800 font-bold mb-2">開始建立你的學習計畫</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                建立計畫後，這裡將顯示完整的計畫分析與統計
+              </p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
