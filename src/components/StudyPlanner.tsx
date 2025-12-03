@@ -5,6 +5,7 @@ import { User } from '../App';
 type StudyPlan = {
   id: string;
   title: string;
+  subject?: string; // 科目分類（選填）- NEW
   date: string; // YYYY-MM-DD
   startTime: string;
   endTime: string;
@@ -163,7 +164,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
-  const [form, setForm] = useState({ title: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
+  const [form, setForm] = useState({ title: '', subject: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
   const [reminderToast, setReminderToast] = useState('');
   const [titleError, setTitleError] = useState('');
 
@@ -236,6 +237,17 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     [plans, form.date, form.duration]
   );
 
+  // 提取歷史科目（用於 datalist 自動建議）
+  const historicalSubjects = useMemo(() => {
+    const subjects = new Set<string>();
+    plans.forEach(plan => {
+      if (plan.subject && plan.subject.trim()) {
+        subjects.add(plan.subject.trim());
+      }
+    });
+    return Array.from(subjects).sort();
+  }, [plans]);
+
   // 當開始時間變化時，自動建議提醒時間
   useEffect(() => {
     if (form.start) {
@@ -268,6 +280,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     const newPlan: StudyPlan = {
       id: `plan-${Date.now()}`,
       title: form.title.trim(),
+      subject: form.subject.trim() || undefined, // 科目（選填）
       date: form.date,
       startTime: form.start,
       endTime: endTime,
@@ -284,6 +297,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     // 清空表單，保持日期不變，重置提醒時間
     setForm({
       title: '',
+      subject: '',
       date: form.date,
       start: '19:00',
       duration: 90,
@@ -379,6 +393,21 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             {titleError && (
               <p className="text-red-500 text-sm mt-1">{titleError}</p>
             )}
+          </div>
+          <div>
+            <input
+              list="subject-suggestions"
+              className="w-full rounded-2xl border border-gray-200 px-4 py-3"
+              placeholder="科目（選填，例如微積分、英文）"
+              value={form.subject}
+              onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
+            />
+            <datalist id="subject-suggestions">
+              {historicalSubjects.map((subject) => (
+                <option key={subject} value={subject} />
+              ))}
+            </datalist>
+            <p className="text-xs text-gray-500 mt-1">💡 填寫科目可獲得更精準的學習分析</p>
           </div>
           <input
             className="rounded-2xl border border-gray-200 px-4 py-3"
@@ -514,9 +543,16 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                   className="w-5 h-5"
                 />
                 <div className="flex-1">
-                  <h4 className={`font-semibold ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                    {plan.title}
-                  </h4>
+                  <div className="flex items-center gap-2 mb-1">
+                    {plan.subject && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                        {plan.subject}
+                      </span>
+                    )}
+                    <h4 className={`font-semibold ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                      {plan.title}
+                    </h4>
+                  </div>
                 <p className="text-sm text-gray-500">
                     {plan.startTime} - {plan.endTime}
                     {plan.location ? ` · ${plan.location}` : ''} · 提醒 {plan.reminderTime}
@@ -534,6 +570,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                       setForm((prev) => ({
                         ...prev,
                         title: plan.title,
+                        subject: plan.subject || '',
                         date: plan.date,
                         start: plan.startTime,
                         duration: duration,

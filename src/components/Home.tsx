@@ -16,6 +16,7 @@ type HomeProps = {
 type StudyPlan = {
   id: string;
   title: string;
+  subject?: string; // 科目分類（選填）
   date: string;
   startTime: string;
   endTime: string;
@@ -34,6 +35,7 @@ type FocusLog = {
   timestamp: number;
   planId?: string;
   planTitle?: string;
+  subject?: string; // 科目分類
   location?: string;
 };
 
@@ -125,6 +127,7 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
       timestamp: Date.now(),
       planId: linkedPlan?.id,
       planTitle: linkedPlan?.title,
+      subject: linkedPlan?.subject, // 科目分類
       location: linkedPlan?.location || customLocation || undefined,
     };
     recordFocusLog(log);
@@ -628,9 +631,16 @@ const toggleTimer = () => {
                         </span>
                       )}
                     </div>
-                    <p className={`font-medium ${plan.completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
-                      {plan.title}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      {plan.subject && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                          {plan.subject}
+                        </span>
+                      )}
+                      <p className={`font-medium ${plan.completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+                        {plan.title}
+                      </p>
+                    </div>
                     {plan.location && (
                       <div className="flex items-center gap-1 mt-1">
                         <MapPin className="w-3 h-3 text-gray-400" />

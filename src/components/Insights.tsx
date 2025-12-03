@@ -9,12 +9,14 @@ type FocusLog = {
   timestamp: number;
   planId?: string;
   planTitle?: string;
+  subject?: string; // 科目分類
   location?: string;
 };
 
 type StudyPlan = {
   id: string;
   title: string;
+  subject?: string; // 科目分類（選填）
   date: string;
   startTime: string;
   endTime: string;
@@ -105,15 +107,16 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
 
     const completionRate = weekPlans.length > 0 ? Math.round((completedPlans.length / weekPlans.length) * 100) : 0;
 
-    // 科目/標題分析
+    // 科目/標題分析（優先使用 subject，沒有則使用 planTitle）
     const subjectStats: { [key: string]: { minutes: number; count: number } } = {};
     logs.forEach(log => {
-      if (log.planTitle) {
-        if (!subjectStats[log.planTitle]) {
-          subjectStats[log.planTitle] = { minutes: 0, count: 0 };
+      const key = log.subject || log.planTitle;
+      if (key) {
+        if (!subjectStats[key]) {
+          subjectStats[key] = { minutes: 0, count: 0 };
         }
-        subjectStats[log.planTitle].minutes += log.minutes;
-        subjectStats[log.planTitle].count += 1;
+        subjectStats[key].minutes += log.minutes;
+        subjectStats[key].count += 1;
       }
     });
     const sortedSubjects = Object.entries(subjectStats)
