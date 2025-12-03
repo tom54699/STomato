@@ -629,46 +629,40 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirm.show && (
-        <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 bg-opacity-95 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-xl max-w-sm w-full overflow-hidden animate-scale-in">
-            {/* Header */}
-            <div className="px-6 pt-6 pb-4 bg-gradient-to-r from-red-50 to-orange-50">
-              <div className="text-center">
-                <div className="text-4xl mb-2">🗑️</div>
-                <h3 className="text-lg font-bold text-gray-800">刪除計畫</h3>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-5">
-              <p className="text-gray-800 text-center font-medium mb-3">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full">
+            {/* Icon & Content */}
+            <div className="p-6 text-center">
+              <div className="text-5xl mb-3">🗑️</div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">刪除計畫</h3>
+              <p className="text-gray-700 font-medium mb-2">
                 {deleteConfirm.planTitle}
               </p>
               {deleteConfirm.hasData && (
-                <p className="text-red-600 text-sm text-center leading-relaxed">
-                  ⚠️ 已有專注記錄，刪除後無法復原
+                <p className="text-red-600 text-xs leading-relaxed">
+                  已有專注記錄，刪除後無法復原
                 </p>
               )}
             </div>
 
             {/* Actions */}
-            <div className="px-6 pb-6 space-y-3">
+            <div className="px-4 pb-4 flex gap-2">
+              <button
+                onClick={() => {
+                  setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
+              >
+                取消
+              </button>
               <button
                 onClick={() => {
                   removePlan(deleteConfirm.planId);
                   setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
                 }}
-                className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg active:scale-98 transition-all"
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
               >
-                確定刪除
-              </button>
-              <button
-                onClick={() => {
-                  setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
-                }}
-                className="w-full bg-white border-2 border-gray-200 text-gray-700 py-3.5 rounded-xl font-semibold hover:bg-gray-50 active:scale-98 transition-all"
-              >
-                取消
+                刪除
               </button>
             </div>
           </div>

@@ -575,25 +575,29 @@ const toggleTimer = () => {
             </g>
           </svg>
         </div>
-        <div className="flex justify-center gap-4 mb-6">
-          <button
-            onClick={toggleTimer}
-            className="bg-gradient-to-r from-orange-400 to-pink-500 text-white p-6 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all"
-          >
-            {isRunning ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-          </button>
-          <button
-            onClick={resetTimer}
-            className="bg-gray-200 text-gray-700 p-6 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-300 transform hover:scale-110 transition-all"
-          >
-            <RotateCcw className="w-8 h-8" />
-          </button>
+        <div className="flex flex-col items-center gap-4 mb-6">
+          {/* Main controls */}
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={toggleTimer}
+              className="bg-gradient-to-r from-orange-400 to-pink-500 text-white p-6 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all"
+            >
+              {isRunning ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+            </button>
+            <button
+              onClick={resetTimer}
+              className="bg-gray-200 text-gray-700 p-6 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-300 transform hover:scale-110 transition-all"
+            >
+              <RotateCcw className="w-8 h-8" />
+            </button>
+          </div>
+          {/* Quick complete - Demo only, smaller and less prominent */}
           <button
             onClick={handleComplete}
-            className="bg-yellow-100 text-yellow-600 p-6 rounded-full border border-yellow-300 shadow hover:shadow-md transform hover:scale-105 transition-all"
-            title="快速完成一次番茄鐘（Demo 專用）"
+            className="bg-gray-50 text-gray-400 px-3 py-1 rounded-full border border-gray-200 text-xs hover:bg-gray-100 transition-all"
+            title="快速完成（測試用）"
           >
-            <Zap className="w-8 h-8" />
+            測試完成
           </button>
         </div>
       </div>
@@ -769,29 +773,23 @@ const toggleTimer = () => {
 
       {/* Confirmation Dialog */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 bg-opacity-95 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-xl max-w-sm w-full overflow-hidden">
-            {/* Header */}
-            <div className={`px-6 pt-6 pb-4 ${confirmDialog.type === 'suggest' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-orange-50 to-red-50'}`}>
-              <div className="text-center">
-                <div className="text-4xl mb-2">
-                  {confirmDialog.type === 'suggest' ? '💡' : '⚠️'}
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">
-                  {confirmDialog.type === 'suggest' ? '建議完成' : '確定要超過？'}
-                </h3>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full">
+            {/* Icon & Title */}
+            <div className="p-6 text-center">
+              <div className="text-5xl mb-3">
+                {confirmDialog.type === 'suggest' ? '💡' : '⚠️'}
               </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-5">
-              <p className="text-gray-600 text-center text-sm leading-relaxed">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">
+                {confirmDialog.type === 'suggest' ? '建議' : '提醒'}
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
                 {confirmDialog.message}
               </p>
             </div>
 
             {/* Actions */}
-            <div className="px-6 pb-6 space-y-3">
+            <div className="px-4 pb-4 flex gap-2">
               {confirmDialog.type === 'suggest' ? (
                 <>
                   <button
@@ -801,9 +799,9 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg active:scale-98 transition-all"
+                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
                   >
-                    一次完成 {confirmDialog.suggestedMinutes} 分鐘
+                    {confirmDialog.suggestedMinutes} 分鐘
                   </button>
                   <button
                     onClick={() => {
@@ -812,13 +810,21 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="w-full bg-white border-2 border-gray-200 text-gray-700 py-3.5 rounded-xl font-semibold hover:bg-gray-50 active:scale-98 transition-all"
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
                   >
-                    按原計畫 {confirmDialog.originalMinutes} 分鐘
+                    {confirmDialog.originalMinutes} 分鐘
                   </button>
                 </>
               ) : (
                 <>
+                  <button
+                    onClick={() => {
+                      setConfirmDialog({ show: false, type: 'warning', message: '' });
+                    }}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 active:scale-95 transition-all"
+                  >
+                    取消
+                  </button>
                   <button
                     onClick={() => {
                       if (confirmDialog.planId && confirmDialog.originalMinutes) {
@@ -826,17 +832,9 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'warning', message: '' });
                     }}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg active:scale-98 transition-all"
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-xl font-semibold text-sm hover:shadow-lg active:scale-95 transition-all"
                   >
-                    確定啟動
-                  </button>
-                  <button
-                    onClick={() => {
-                      setConfirmDialog({ show: false, type: 'warning', message: '' });
-                    }}
-                    className="w-full bg-white border-2 border-gray-200 text-gray-700 py-3.5 rounded-xl font-semibold hover:bg-gray-50 active:scale-98 transition-all"
-                  >
-                    取消
+                    確定
                   </button>
                 </>
               )}
