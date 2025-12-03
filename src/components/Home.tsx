@@ -769,15 +769,29 @@ const toggleTimer = () => {
 
       {/* Confirmation Dialog */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-xl font-bold text-gray-800">
-              {confirmDialog.type === 'suggest' ? '💡 建議' : '⚠️ 提醒'}
-            </h3>
-            <p className="text-gray-700 leading-relaxed">
-              {confirmDialog.message}
-            </p>
-            <div className="flex gap-3">
+        <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 bg-opacity-95 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-xl max-w-sm w-full overflow-hidden">
+            {/* Header */}
+            <div className={`px-6 pt-6 pb-4 ${confirmDialog.type === 'suggest' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-orange-50 to-red-50'}`}>
+              <div className="text-center">
+                <div className="text-4xl mb-2">
+                  {confirmDialog.type === 'suggest' ? '💡' : '⚠️'}
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  {confirmDialog.type === 'suggest' ? '建議完成' : '確定要超過？'}
+                </h3>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5">
+              <p className="text-gray-600 text-center text-sm leading-relaxed">
+                {confirmDialog.message}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 pb-6 space-y-3">
               {confirmDialog.type === 'suggest' ? (
                 <>
                   <button
@@ -787,9 +801,9 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-2xl font-semibold hover:shadow-lg active:scale-95 transition-all"
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg active:scale-98 transition-all"
                   >
-                    一次完成 ({confirmDialog.suggestedMinutes} 分)
+                    一次完成 {confirmDialog.suggestedMinutes} 分鐘
                   </button>
                   <button
                     onClick={() => {
@@ -798,9 +812,9 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-300 active:scale-95 transition-all"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-700 py-3.5 rounded-xl font-semibold hover:bg-gray-50 active:scale-98 transition-all"
                   >
-                    照原計畫 ({confirmDialog.originalMinutes} 分)
+                    按原計畫 {confirmDialog.originalMinutes} 分鐘
                   </button>
                 </>
               ) : (
@@ -812,7 +826,7 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'warning', message: '' });
                     }}
-                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-2xl font-semibold hover:shadow-lg active:scale-95 transition-all"
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3.5 rounded-xl font-semibold hover:shadow-lg active:scale-98 transition-all"
                   >
                     確定啟動
                   </button>
@@ -820,7 +834,7 @@ const toggleTimer = () => {
                     onClick={() => {
                       setConfirmDialog({ show: false, type: 'warning', message: '' });
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-300 active:scale-95 transition-all"
+                    className="w-full bg-white border-2 border-gray-200 text-gray-700 py-3.5 rounded-xl font-semibold hover:bg-gray-50 active:scale-98 transition-all"
                   >
                     取消
                   </button>
