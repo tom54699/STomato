@@ -58,6 +58,16 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
   const [isDragging, setIsDragging] = useState(false);
   const circleRef = useRef<SVGSVGElement>(null);
 
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    type: 'suggest' | 'warning';
+    message: string;
+    suggestedMinutes?: number;
+    planId?: string;
+    originalMinutes?: number;
+  }>({ show: false, type: 'suggest', message: '' });
+
   const todayKey = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
@@ -664,23 +674,24 @@ const toggleTimer = () => {
                         const isExceeding = minutes > remainingMinutes;
                         return (
                           <button
-                            onClick={() => startTimerWithPlan(plan.id, minutes)}
-                            className={`group relative bg-white border-2 ${
-                              isExceeding ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
-                            } ${
-                              isExceeding ? 'text-orange-600' : 'text-indigo-600'
-                            } hover:text-white hover:bg-gradient-to-r ${
-                              isExceeding ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
-                            } px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2`}
-                            title={
-                              isExceeding
-                                ? `⚠️ 計畫剩餘 ${remainingMinutes} 分鐘，圓環設定 ${minutes} 分鐘會超過`
-                                : `開始 ${minutes} 分鐘番茄鐘（計畫剩餘 ${remainingMinutes} 分鐘）`
-                            }
+                            onClick={() => {
+                              if (isExceeding) {
+                                setConfirmDialog({
+                                  show: true,
+                                  type: 'warning',
+                                  message: `計畫只剩 ${remainingMinutes} 分鐘，確定要啟動 ${minutes} 分鐘的番茄鐘嗎？`,
+                                  planId: plan.id,
+                                  originalMinutes: minutes,
+                                });
+                              } else {
+                                startTimerWithPlan(plan.id, minutes);
+                              }
+                            }}
+                            className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                            title={`開始 ${minutes} 分鐘番茄鐘（計畫剩餘 ${remainingMinutes} 分鐘）`}
                           >
                             <Play className="w-4 h-4" />
                             <span className="text-sm font-bold">{minutes}</span>
-                            {isExceeding && <span className="text-xs">⚠️</span>}
                           </button>
                         );
                       }
@@ -692,13 +703,21 @@ const toggleTimer = () => {
                       if (remainingAfter > 0 && remainingAfter < 10) {
                         return (
                           <button
-                            onClick={() => startTimerWithPlan(plan.id, remainingMinutes)}
-                            className="group relative bg-white border-2 border-green-300 hover:border-green-500 text-green-600 hover:text-white hover:bg-gradient-to-r hover:from-green-500 hover:to-emerald-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
-                            title={`💡 建議一次完成剩餘 ${remainingMinutes} 分鐘（否則會剩 ${remainingAfter} 分鐘零頭）`}
+                            onClick={() => {
+                              setConfirmDialog({
+                                show: true,
+                                type: 'suggest',
+                                message: `完成 ${minutes} 分鐘後會剩 ${remainingAfter} 分鐘零頭，建議一次完成全部 ${remainingMinutes} 分鐘？`,
+                                suggestedMinutes: remainingMinutes,
+                                planId: plan.id,
+                                originalMinutes: minutes,
+                              });
+                            }}
+                            className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                            title={`點擊查看建議`}
                           >
                             <Play className="w-4 h-4" />
-                            <span className="text-sm font-bold">{remainingMinutes}</span>
-                            <span className="text-xs">💡</span>
+                            <span className="text-sm font-bold">{minutes}</span>
                           </button>
                         );
                       }
@@ -707,23 +726,24 @@ const toggleTimer = () => {
                       const isExceeding = minutes > remainingMinutes;
                       return (
                         <button
-                          onClick={() => startTimerWithPlan(plan.id, minutes)}
-                          className={`group relative bg-white border-2 ${
-                            isExceeding ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
-                          } ${
-                            isExceeding ? 'text-orange-600' : 'text-indigo-600'
-                          } hover:text-white hover:bg-gradient-to-r ${
-                            isExceeding ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
-                          } px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2`}
-                          title={
-                            isExceeding
-                              ? `⚠️ 計畫剩餘 ${remainingMinutes} 分鐘，圓環設定 ${minutes} 分鐘會超過`
-                              : `開始 ${minutes} 分鐘番茄鐘（計畫剩餘 ${remainingMinutes} 分鐘）`
-                          }
+                          onClick={() => {
+                            if (isExceeding) {
+                              setConfirmDialog({
+                                show: true,
+                                type: 'warning',
+                                message: `計畫剩餘 ${remainingMinutes} 分鐘，確定要啟動 ${minutes} 分鐘的番茄鐘嗎？`,
+                                planId: plan.id,
+                                originalMinutes: minutes,
+                              });
+                            } else {
+                              startTimerWithPlan(plan.id, minutes);
+                            }
+                          }}
+                          className="group relative bg-white border-2 border-indigo-300 hover:border-indigo-500 text-indigo-600 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                          title={`開始 ${minutes} 分鐘番茄鐘（計畫剩餘 ${remainingMinutes} 分鐘）`}
                         >
                           <Play className="w-4 h-4" />
                           <span className="text-sm font-bold">{minutes}</span>
-                          {isExceeding && <span className="text-xs">⚠️</span>}
                         </button>
                       );
                     }
@@ -743,6 +763,70 @@ const toggleTimer = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {confirmDialog.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-xl font-bold text-gray-800">
+              {confirmDialog.type === 'suggest' ? '💡 建議' : '⚠️ 提醒'}
+            </h3>
+            <p className="text-gray-700 leading-relaxed">
+              {confirmDialog.message}
+            </p>
+            <div className="flex gap-3">
+              {confirmDialog.type === 'suggest' ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (confirmDialog.planId && confirmDialog.suggestedMinutes) {
+                        startTimerWithPlan(confirmDialog.planId, confirmDialog.suggestedMinutes);
+                      }
+                      setConfirmDialog({ show: false, type: 'suggest', message: '' });
+                    }}
+                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-2xl font-semibold hover:shadow-lg active:scale-95 transition-all"
+                  >
+                    一次完成 ({confirmDialog.suggestedMinutes} 分)
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirmDialog.planId && confirmDialog.originalMinutes) {
+                        startTimerWithPlan(confirmDialog.planId, confirmDialog.originalMinutes);
+                      }
+                      setConfirmDialog({ show: false, type: 'suggest', message: '' });
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-300 active:scale-95 transition-all"
+                  >
+                    照原計畫 ({confirmDialog.originalMinutes} 分)
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      if (confirmDialog.planId && confirmDialog.originalMinutes) {
+                        startTimerWithPlan(confirmDialog.planId, confirmDialog.originalMinutes);
+                      }
+                      setConfirmDialog({ show: false, type: 'warning', message: '' });
+                    }}
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-2xl font-semibold hover:shadow-lg active:scale-95 transition-all"
+                  >
+                    確定啟動
+                  </button>
+                  <button
+                    onClick={() => {
+                      setConfirmDialog({ show: false, type: 'warning', message: '' });
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-300 active:scale-95 transition-all"
+                  >
+                    取消
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -167,6 +167,12 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const [form, setForm] = useState({ title: '', subject: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
   const [reminderToast, setReminderToast] = useState('');
   const [titleError, setTitleError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    planId: string;
+    planTitle: string;
+    hasData: boolean;
+  }>({ show: false, planId: '', planTitle: '', hasData: false });
 
   useEffect(() => {
     const saved = localStorage.getItem('studyPlans');
@@ -315,6 +321,26 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           : plan
       )
     );
+  };
+
+  const handleDeleteClick = (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+
+    // 檢查是否已完成或有執行過番茄鐘
+    const hasData = plan.completed || (plan.pomodoroCount && plan.pomodoroCount > 0) || false;
+
+    if (hasData) {
+      setDeleteConfirm({
+        show: true,
+        planId,
+        planTitle: plan.title,
+        hasData: true,
+      });
+    } else {
+      // 直接刪除
+      removePlan(planId);
+    }
   };
 
   const removePlan = (planId: string) => {
@@ -582,7 +608,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                   >
                     編輯
                   </button>
-                  <button className="text-gray-400" onClick={() => removePlan(plan.id)}>
+                  <button className="text-gray-400" onClick={() => handleDeleteClick(plan.id)}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -597,6 +623,44 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           <div className="bg-emerald-500 text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
             <BellRing className="w-5 h-5" />
             <span>{reminderToast}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-xl font-bold text-gray-800">⚠️ 確認刪除</h3>
+            <div className="space-y-2">
+              <p className="text-gray-700 font-medium">
+                確定要刪除「{deleteConfirm.planTitle}」嗎？
+              </p>
+              {deleteConfirm.hasData && (
+                <p className="text-red-600 text-sm">
+                  ⚠️ 此計畫已完成或有執行過番茄鐘，刪除後相關的專注記錄也會一併消失！
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  removePlan(deleteConfirm.planId);
+                  setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
+                }}
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-2xl font-semibold hover:shadow-lg active:scale-95 transition-all"
+              >
+                確定刪除
+              </button>
+              <button
+                onClick={() => {
+                  setDeleteConfirm({ show: false, planId: '', planTitle: '', hasData: false });
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-300 active:scale-95 transition-all"
+              >
+                取消
+              </button>
+            </div>
           </div>
         </div>
       )}
