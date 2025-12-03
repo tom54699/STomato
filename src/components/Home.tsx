@@ -659,29 +659,28 @@ const toggleTimer = () => {
                         return null;
                       }
 
-                      // 取較小值：圓環設定的時間 vs 計畫剩餘時長
-                      const maxAllowedMinutes = Math.min(minutes, remainingMinutes);
-                      const isAdjusted = maxAllowedMinutes < minutes;
+                      // 檢查是否超過剩餘時間（僅用於顯示警告顏色，不強制限制）
+                      const isExceeding = minutes > remainingMinutes;
 
                       return (
                         <button
-                          onClick={() => startTimerWithPlan(plan.id, maxAllowedMinutes)}
+                          onClick={() => startTimerWithPlan(plan.id, minutes)}
                           className={`group relative bg-white border-2 ${
-                            isAdjusted ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
+                            isExceeding ? 'border-orange-300 hover:border-orange-500' : 'border-indigo-300 hover:border-indigo-500'
                           } ${
-                            isAdjusted ? 'text-orange-600' : 'text-indigo-600'
+                            isExceeding ? 'text-orange-600' : 'text-indigo-600'
                           } hover:text-white hover:bg-gradient-to-r ${
-                            isAdjusted ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
+                            isExceeding ? 'hover:from-orange-500 hover:to-red-500' : 'hover:from-indigo-500 hover:to-purple-500'
                           } px-4 py-2 rounded-full font-medium shadow-md hover:shadow-xl active:scale-95 transition-all flex items-center gap-2`}
                           title={
-                            isAdjusted
-                              ? `計畫剩餘 ${remainingMinutes} 分鐘，已自動調整為 ${maxAllowedMinutes} 分鐘`
-                              : `開始 ${maxAllowedMinutes} 分鐘番茄鐘（可在上方圓環調整）`
+                            isExceeding
+                              ? `⚠️ 計畫剩餘 ${remainingMinutes} 分鐘，圓環設定 ${minutes} 分鐘會超過`
+                              : `開始 ${minutes} 分鐘番茄鐘（計畫剩餘 ${remainingMinutes} 分鐘）`
                           }
                         >
                           <Play className="w-4 h-4" />
-                          <span className="text-sm font-bold">{maxAllowedMinutes}</span>
-                          {isAdjusted && <span className="text-xs">⏱️</span>}
+                          <span className="text-sm font-bold">{minutes}</span>
+                          {isExceeding && <span className="text-xs">⚠️</span>}
                         </button>
                       );
                     }
