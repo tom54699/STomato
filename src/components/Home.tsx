@@ -45,6 +45,7 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
   const [isRunning, setIsRunning] = useState(false);
   const [initialMinutes, setInitialMinutes] = useState(25);
   const [pointsEarned, setPointsEarned] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false); // 追蹤是否已經開始過計時
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -124,6 +125,7 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
 
   const handleComplete = () => {
     setIsRunning(false);
+    setHasStarted(false); // 重置為未開始狀態
     const completionBonus = 50;
     const totalPoints = pointsEarned + completionBonus;
     onPointsUpdate(totalPoints);
@@ -189,6 +191,7 @@ const toggleTimer = () => {
     if (!isRunning && minutes === initialMinutes && seconds === 0) {
       setPointsEarned(0);
       visibilityRef.current = true;
+      setHasStarted(true); // 標記為已開始
     }
     setIsRunning(!isRunning);
   };
@@ -198,11 +201,12 @@ const toggleTimer = () => {
     setMinutes(initialMinutes);
     setSeconds(0);
     setPointsEarned(0);
+    setHasStarted(false); // 重置為未開始狀態
     visibilityRef.current = true;
   };
 
   const setCustomTime = (mins: number) => {
-    if (!isRunning) {
+    if (!isRunning && !hasStarted) {
       setMinutes(mins);
       setSeconds(0);
       setInitialMinutes(mins);
@@ -219,6 +223,7 @@ const toggleTimer = () => {
     setSeconds(0);
     setInitialMinutes(mins);
     setPointsEarned(0);
+    setHasStarted(true); // 標記為已開始
     visibilityRef.current = true;
     setIsRunning(true);
   };
@@ -229,6 +234,7 @@ const toggleTimer = () => {
 
     setSelectedPlanId(''); // Quick start doesn't link to a plan
     setPointsEarned(0);
+    setHasStarted(true); // 標記為已開始
     visibilityRef.current = true;
     setIsRunning(true);
   };
@@ -263,7 +269,7 @@ const toggleTimer = () => {
 
   // Mouse/Touch event handlers
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
-    if (isRunning) return;
+    if (isRunning || hasStarted) return; // 運行中或已開始過都不允許拖動
     e.preventDefault();
     e.stopPropagation();
 
@@ -434,9 +440,9 @@ const toggleTimer = () => {
           <svg
             ref={circleRef}
             className="w-full h-full transform -rotate-90"
-            style={{ touchAction: 'none', cursor: !isRunning ? 'grab' : 'default' }}
-            onMouseDown={!isRunning ? handleDragStart : undefined}
-            onTouchStart={!isRunning ? handleDragStart : undefined}
+            style={{ touchAction: 'none', cursor: !isRunning && !hasStarted ? 'grab' : 'default' }}
+            onMouseDown={!isRunning && !hasStarted ? handleDragStart : undefined}
+            onTouchStart={!isRunning && !hasStarted ? handleDragStart : undefined}
           >
             <defs>
               <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -492,7 +498,7 @@ const toggleTimer = () => {
             )}
 
             {/* Interactive overlay - larger area for easier dragging */}
-            {!isRunning && (
+            {!isRunning && !hasStarted && (
               <circle
                 cx="128"
                 cy="128"
@@ -575,29 +581,25 @@ const toggleTimer = () => {
             </g>
           </svg>
         </div>
-        <div className="flex flex-col items-center gap-4 mb-6">
-          {/* Main controls */}
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={toggleTimer}
-              className="bg-gradient-to-r from-orange-400 to-pink-500 text-white p-6 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all"
-            >
-              {isRunning ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-            </button>
-            <button
-              onClick={resetTimer}
-              className="bg-gray-200 text-gray-700 p-6 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-300 transform hover:scale-110 transition-all"
-            >
-              <RotateCcw className="w-8 h-8" />
-            </button>
-          </div>
-          {/* Quick complete - Demo only, smaller and less prominent */}
+        <div className="flex justify-center gap-4 mb-6">
+          <button
+            onClick={toggleTimer}
+            className="bg-gradient-to-r from-orange-400 to-pink-500 text-white p-6 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all"
+          >
+            {isRunning ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+          </button>
+          <button
+            onClick={resetTimer}
+            className="bg-gray-200 text-gray-700 p-6 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-300 transform hover:scale-110 transition-all"
+          >
+            <RotateCcw className="w-8 h-8" />
+          </button>
           <button
             onClick={handleComplete}
-            className="bg-gray-50 text-gray-400 px-3 py-1 rounded-full border border-gray-200 text-xs hover:bg-gray-100 transition-all"
-            title="快速完成（測試用）"
+            className="bg-yellow-100 text-yellow-600 p-6 rounded-full border border-yellow-300 shadow hover:shadow-md transform hover:scale-105 transition-all"
+            title="快速完成一次番茄鐘（Demo 專用）"
           >
-            測試完成
+            <Zap className="w-8 h-8" />
           </button>
         </div>
       </div>
