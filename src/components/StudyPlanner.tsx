@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, AlarmClockCheck, ListChecks, Trash2, BellRing, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, AlarmClockCheck, ListChecks, Trash2, BellRing, ChevronLeft, ChevronRight, ChevronDown, Check } from 'lucide-react';
 import { User } from '../App';
+import * as Select from '@radix-ui/react-select';
 
 type StudyPlan = {
   id: string;
@@ -440,44 +441,75 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </label>
             <div className="grid grid-cols-2 gap-3">
               {/* 小時選擇 */}
-              <select
-                className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
+              <Select.Root
                 value={form.start ? form.start.split(':')[0] : ''}
-                onChange={(event) => {
-                  const hour = event.target.value;
+                onValueChange={(hour) => {
                   const minute = form.start ? form.start.split(':')[1] : '00';
                   setForm((prev) => ({ ...prev, start: hour ? `${hour}:${minute}` : '' }));
                 }}
               >
-                <option value="">小時</option>
-                {Array.from({ length: 16 }, (_, i) => i + 7).map(hour => (
-                  <option
-                    key={hour}
-                    value={hour.toString().padStart(2, '0')}
-                    disabled={isHourDisabled.has(hour)}
-                  >
-                    {hour}:00
-                  </option>
-                ))}
-              </select>
+                <Select.Trigger className="flex items-center justify-between rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer">
+                  <Select.Value placeholder="小時" />
+                  <Select.Icon>
+                    <ChevronDown className="w-4 h-4" />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Portal>
+                  <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                    <Select.Viewport className="p-1">
+                      {Array.from({ length: 16 }, (_, i) => i + 7).map(hour => (
+                        <Select.Item
+                          key={hour}
+                          value={hour.toString().padStart(2, '0')}
+                          disabled={isHourDisabled.has(hour)}
+                          className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-green-50 focus:bg-green-50 outline-none data-[disabled]:text-gray-400 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+                        >
+                          <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Select.ItemIndicator>
+                          <Select.ItemText>{hour}:00</Select.ItemText>
+                        </Select.Item>
+                      ))}
+                    </Select.Viewport>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
 
               {/* 分鐘選擇 */}
-              <select
-                className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
+              <Select.Root
                 value={form.start ? form.start.split(':')[1] : ''}
-                onChange={(event) => {
+                onValueChange={(minute) => {
                   const hour = form.start ? form.start.split(':')[0] : '19';
-                  const minute = event.target.value;
                   setForm((prev) => ({ ...prev, start: `${hour}:${minute}` }));
                 }}
                 disabled={!form.start || !form.start.split(':')[0]}
               >
-                <option value="">分鐘</option>
-                <option value="00" disabled={isMinuteDisabled(0)}>00 分</option>
-                <option value="15" disabled={isMinuteDisabled(15)}>15 分</option>
-                <option value="30" disabled={isMinuteDisabled(30)}>30 分</option>
-                <option value="45" disabled={isMinuteDisabled(45)}>45 分</option>
-              </select>
+                <Select.Trigger className="flex items-center justify-between rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Select.Value placeholder="分鐘" />
+                  <Select.Icon>
+                    <ChevronDown className="w-4 h-4" />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Portal>
+                  <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                    <Select.Viewport className="p-1">
+                      {[0, 15, 30, 45].map(minute => (
+                        <Select.Item
+                          key={minute}
+                          value={minute.toString().padStart(2, '0')}
+                          disabled={isMinuteDisabled(minute)}
+                          className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-green-50 focus:bg-green-50 outline-none data-[disabled]:text-gray-400 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+                        >
+                          <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Select.ItemIndicator>
+                          <Select.ItemText>{minute.toString().padStart(2, '0')} 分</Select.ItemText>
+                        </Select.Item>
+                      ))}
+                    </Select.Viewport>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
             </div>
           </div>
 
