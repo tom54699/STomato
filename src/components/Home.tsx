@@ -371,10 +371,10 @@ const toggleTimer = () => {
   };
 
   // Calculate progress
-  const progress = isRunning
+  const progress = hasStarted
     ? ((initialMinutes * 60 - (minutes * 60 + seconds)) / (initialMinutes * 60)) * 100
     : (() => {
-        // When not running, show progress based on current time setting (1-60 minutes)
+        // When not started, show progress based on current time setting (1-60 minutes)
         const minTime = 1;
         const maxTime = 60;
         const timeRange = maxTime - minTime;
@@ -397,8 +397,8 @@ const toggleTimer = () => {
         </div>
       </div>
 
-      {/* Quick Start & New Plan Buttons - Only show when not running */}
-      {!isRunning && (
+      {/* Quick Start & New Plan Buttons - Only show when not started */}
+      {!hasStarted && (
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={handleQuickStart}
@@ -515,9 +515,9 @@ const toggleTimer = () => {
             {/* Time display using SVG text - no pointer events blocking */}
             <g transform="rotate(90, 128, 128)" style={{ pointerEvents: 'none' }}>
               {/* Main time display */}
-              {!isRunning ? (
+              {!hasStarted ? (
                 <>
-                  {/* Only show minutes when not running */}
+                  {/* Only show minutes when not started */}
                   <text
                     x="128"
                     y="115"
@@ -552,7 +552,7 @@ const toggleTimer = () => {
                 </>
               ) : (
                 <>
-                  {/* Show minutes:seconds when running */}
+                  {/* Show minutes:seconds when started (running or paused) */}
                   <text
                     x="128"
                     y="120"
@@ -564,17 +564,17 @@ const toggleTimer = () => {
                   >
                     {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
                   </text>
-                  {/* Points when running */}
+                  {/* Points and status */}
                   <text
                     x="128"
                     y="145"
                     textAnchor="middle"
                     fontSize="18"
-                    fill="#16a34a"
+                    fill={isRunning ? "#16a34a" : "#f59e0b"}
                     fontWeight="600"
                     style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
                   >
-                    +{pointsEarned}
+                    {isRunning ? `+${pointsEarned}` : '已暫停'}
                   </text>
                 </>
               )}
