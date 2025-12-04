@@ -441,7 +441,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             <div className="grid grid-cols-2 gap-3">
               {/* 小時選擇 */}
               <select
-                className="rounded-2xl border border-gray-200 px-4 py-3 text-gray-800 bg-white focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all cursor-pointer"
+                className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
                 value={form.start ? form.start.split(':')[0] : ''}
                 onChange={(event) => {
                   const hour = event.target.value;
@@ -463,7 +463,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
               {/* 分鐘選擇 */}
               <select
-                className="rounded-2xl border border-gray-200 px-4 py-3 text-gray-800 bg-white focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all cursor-pointer disabled:bg-gray-50 disabled:text-gray-400"
+                className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
                 value={form.start ? form.start.split(':')[1] : ''}
                 onChange={(event) => {
                   const hour = form.start ? form.start.split(':')[0] : '19';
