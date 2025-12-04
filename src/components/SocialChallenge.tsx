@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Users2, Flame, Clock, Share2, Target, Trophy, ShieldCheck } from 'lucide-react';
+import { Users2, Flame, Clock, Share2, Target, Trophy, ShieldCheck, ChevronDown, Check } from 'lucide-react';
 import { User } from '../App';
+import * as Select from '@radix-ui/react-select';
 
 type ChallengeRoom = {
   id: string;
@@ -186,31 +187,67 @@ export function SocialChallenge({ user }: SocialChallengeProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-gray-500">每次時長（分鐘）</label>
-              <select
-                className="w-full rounded-xl border border-gray-200 px-4 py-2"
-                value={form.duration}
-                onChange={(event) => setForm((prev) => ({ ...prev, duration: Number(event.target.value) }))}
+              <Select.Root
+                value={form.duration.toString()}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, duration: Number(value) }))}
               >
-                {[20, 25, 30, 45, 60].map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                <Select.Trigger className="flex items-center justify-between w-full rounded-xl border border-gray-200 px-4 py-2 bg-white">
+                  <Select.Value />
+                  <Select.Icon>
+                    <ChevronDown className="w-4 h-4" />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Portal>
+                  <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                    <Select.Viewport className="p-1">
+                      {[20, 25, 30, 45, 60].map((option) => (
+                        <Select.Item
+                          key={option}
+                          value={option.toString()}
+                          className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-orange-50 focus:bg-orange-50 outline-none"
+                        >
+                          <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                            <Check className="w-4 h-4 text-orange-600" />
+                          </Select.ItemIndicator>
+                          <Select.ItemText>{option}</Select.ItemText>
+                        </Select.Item>
+                      ))}
+                    </Select.Viewport>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
             </div>
             <div>
               <label className="text-sm text-gray-500">本輪目標（番茄鐘數）</label>
-              <select
-                className="w-full rounded-xl border border-gray-200 px-4 py-2"
-                value={form.targetPomodoros}
-                onChange={(event) => setForm((prev) => ({ ...prev, targetPomodoros: Number(event.target.value) }))}
+              <Select.Root
+                value={form.targetPomodoros.toString()}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, targetPomodoros: Number(value) }))}
               >
-                {[1, 2, 3, 4, 6].map((count) => (
-                  <option key={count} value={count}>
-                    {count}
-                  </option>
-                ))}
-              </select>
+                <Select.Trigger className="flex items-center justify-between w-full rounded-xl border border-gray-200 px-4 py-2 bg-white">
+                  <Select.Value />
+                  <Select.Icon>
+                    <ChevronDown className="w-4 h-4" />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Portal>
+                  <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                    <Select.Viewport className="p-1">
+                      {[1, 2, 3, 4, 6].map((count) => (
+                        <Select.Item
+                          key={count}
+                          value={count.toString()}
+                          className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-orange-50 focus:bg-orange-50 outline-none"
+                        >
+                          <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                            <Check className="w-4 h-4 text-orange-600" />
+                          </Select.ItemIndicator>
+                          <Select.ItemText>{count}</Select.ItemText>
+                        </Select.Item>
+                      ))}
+                    </Select.Viewport>
+                  </Select.Content>
+                </Select.Portal>
+              </Select.Root>
             </div>
           </div>
           <div>

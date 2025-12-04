@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Plus, X, ChevronLeft, ChevronRight, ChevronDown, Check } from 'lucide-react';
+import * as Select from '@radix-ui/react-select';
 
 type ClassItem = {
   id: string;
@@ -768,27 +769,67 @@ export function Schedule() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-gray-700 mb-2">開始時間</label>
-                    <select
+                    <Select.Root
                       value={newClass.startTime}
-                      onChange={(e) => setNewClass({ ...newClass, startTime: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:outline-none"
+                      onValueChange={(value) => setNewClass({ ...newClass, startTime: value })}
                     >
-                      {TIME_SLOTS.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                      <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:outline-none bg-white">
+                        <Select.Value />
+                        <Select.Icon>
+                          <ChevronDown className="w-4 h-4" />
+                        </Select.Icon>
+                      </Select.Trigger>
+                      <Select.Portal>
+                        <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60">
+                          <Select.Viewport className="p-1">
+                            {TIME_SLOTS.map((time) => (
+                              <Select.Item
+                                key={time}
+                                value={time}
+                                className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none"
+                              >
+                                <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                                  <Check className="w-4 h-4 text-blue-600" />
+                                </Select.ItemIndicator>
+                                <Select.ItemText>{time}</Select.ItemText>
+                              </Select.Item>
+                            ))}
+                          </Select.Viewport>
+                        </Select.Content>
+                      </Select.Portal>
+                    </Select.Root>
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">結束時間</label>
-                    <select
+                    <Select.Root
                       value={newClass.endTime}
-                      onChange={(e) => setNewClass({ ...newClass, endTime: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:outline-none"
+                      onValueChange={(value) => setNewClass({ ...newClass, endTime: value })}
                     >
-                      {TIME_SLOTS.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                      <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 focus:outline-none bg-white">
+                        <Select.Value />
+                        <Select.Icon>
+                          <ChevronDown className="w-4 h-4" />
+                        </Select.Icon>
+                      </Select.Trigger>
+                      <Select.Portal>
+                        <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60">
+                          <Select.Viewport className="p-1">
+                            {TIME_SLOTS.map((time) => (
+                              <Select.Item
+                                key={time}
+                                value={time}
+                                className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none"
+                              >
+                                <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                                  <Check className="w-4 h-4 text-blue-600" />
+                                </Select.ItemIndicator>
+                                <Select.ItemText>{time}</Select.ItemText>
+                              </Select.Item>
+                            ))}
+                          </Select.Viewport>
+                        </Select.Content>
+                      </Select.Portal>
+                    </Select.Root>
                   </div>
                 </div>
                 <div>

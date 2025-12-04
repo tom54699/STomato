@@ -418,19 +418,43 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
               <span className="text-blue-500">⏱️</span>
               學習時長
             </label>
-            <select
-              className="w-full rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer"
-              value={form.duration}
-              onChange={(event) => setForm((prev) => ({ ...prev, duration: Number(event.target.value) }))}
+            <Select.Root
+              value={form.duration.toString()}
+              onValueChange={(value) => setForm((prev) => ({ ...prev, duration: Number(value) }))}
             >
-              <option value={30}>⏰ 30 分鐘</option>
-              <option value={45}>⏰ 45 分鐘</option>
-              <option value={60}>⏰ 1 小時</option>
-              <option value={90}>⏰ 1.5 小時</option>
-              <option value={120}>⏰ 2 小時</option>
-              <option value={150}>⏰ 2.5 小時</option>
-              <option value={180}>⏰ 3 小時</option>
-            </select>
+              <Select.Trigger className="flex items-center justify-between w-full rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer">
+                <Select.Value />
+                <Select.Icon>
+                  <ChevronDown className="w-4 h-4" />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                  <Select.Viewport className="p-1">
+                    {[
+                      { value: 30, label: '⏰ 30 分鐘' },
+                      { value: 45, label: '⏰ 45 分鐘' },
+                      { value: 60, label: '⏰ 1 小時' },
+                      { value: 90, label: '⏰ 1.5 小時' },
+                      { value: 120, label: '⏰ 2 小時' },
+                      { value: 150, label: '⏰ 2.5 小時' },
+                      { value: 180, label: '⏰ 3 小時' },
+                    ].map(option => (
+                      <Select.Item
+                        key={option.value}
+                        value={option.value.toString()}
+                        className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none"
+                      >
+                        <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                          <Check className="w-4 h-4 text-blue-600" />
+                        </Select.ItemIndicator>
+                        <Select.ItemText>{option.label}</Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
           </div>
 
           {/* 開始時間：兩階段選擇 */}

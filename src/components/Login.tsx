@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { User } from '../App';
+import * as Select from '@radix-ui/react-select';
+import { ChevronDown, Check } from 'lucide-react';
 
 type LoginProps = {
   onLogin: (user: User) => void;
@@ -97,19 +99,32 @@ export function Login({ onLogin }: LoginProps) {
 
           <div>
             <label className="block text-gray-700 mb-2">選擇學校</label>
-            <select
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-orange-400 focus:outline-none transition-colors"
-              required
-            >
-              <option value="">請選擇學校</option>
-              {SCHOOLS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Select.Root value={school} onValueChange={setSchool} required>
+              <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-orange-400 focus:outline-none transition-colors bg-white">
+                <Select.Value placeholder="請選擇學校" />
+                <Select.Icon>
+                  <ChevronDown className="w-4 h-4" />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60">
+                  <Select.Viewport className="p-1">
+                    {SCHOOLS.map((s) => (
+                      <Select.Item
+                        key={s}
+                        value={s}
+                        className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-orange-50 focus:bg-orange-50 outline-none"
+                      >
+                        <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                          <Check className="w-4 h-4 text-orange-600" />
+                        </Select.ItemIndicator>
+                        <Select.ItemText>{s}</Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
