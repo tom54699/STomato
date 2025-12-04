@@ -616,62 +616,81 @@ const toggleTimer = () => {
               完成 {computePlanPercent(todayPlans)}%
             </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {todayPlans.map((plan, index) => {
-              // 不同卡片輪替使用不同顏色
-              const colors = [
-                { bg: 'bg-gradient-to-r from-indigo-50 to-purple-50', border: 'border-indigo-200' },
-                { bg: 'bg-gradient-to-r from-blue-50 to-cyan-50', border: 'border-blue-200' },
-                { bg: 'bg-gradient-to-r from-orange-50 to-amber-50', border: 'border-orange-200' },
-                { bg: 'bg-gradient-to-r from-pink-50 to-rose-50', border: 'border-pink-200' },
+              // 簡潔的顏色方案：只使用左側邊框
+              const accentColors = [
+                'border-l-indigo-400',
+                'border-l-blue-400',
+                'border-l-orange-400',
+                'border-l-pink-400',
               ];
-              const colorScheme = plan.completed
-                ? { bg: 'bg-green-50', border: 'border-green-200' }
-                : colors[index % colors.length];
+              const accentColor = plan.completed
+                ? 'border-l-green-500'
+                : accentColors[index % accentColors.length];
 
               return (
               <div
                 key={plan.id}
-                className={`rounded-2xl p-4 border-2 transition-all ${colorScheme.bg} ${colorScheme.border} hover:shadow-md`}
+                className={`bg-white rounded-xl shadow-sm border-l-4 ${accentColor} p-5 hover:shadow-md transition-shadow`}
               >
-                <div className="flex items-center gap-3">
-                  {/* Manual completion checkbox */}
+                <div className="flex items-start gap-4">
+                  {/* Checkbox */}
                   <input
                     type="checkbox"
                     checked={plan.completed}
                     onChange={() => togglePlanCompletion(plan.id)}
-                    className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    className="mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
                   />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-indigo-600 font-semibold">
-                        {plan.startTime} - {plan.endTime}
-                      </span>
-                      {/* 顯示累積進度 */}
-                      {plan.targetMinutes && plan.targetMinutes > 0 && (
-                        <span className="text-xs text-orange-600 font-semibold">
-                          已完成 {plan.completedMinutes || 0}/{plan.targetMinutes} 分鐘
-                          {plan.pomodoroCount && plan.pomodoroCount > 0 ? ` (${plan.pomodoroCount}🍅)` : ''}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {plan.subject && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                          {plan.subject}
-                        </span>
-                      )}
-                      <p className={`font-medium ${plan.completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Title row */}
+                    <div className="mb-3">
+                      <h4 className={`text-lg font-semibold mb-1 ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                         {plan.title}
-                      </p>
+                      </h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-gray-500">
+                          {plan.startTime} - {plan.endTime}
+                        </span>
+                        {plan.subject && (
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded font-medium">
+                            {plan.subject}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {plan.location && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs text-gray-500">{plan.location}</span>
+
+                    {/* Progress - if available */}
+                    {plan.targetMinutes && plan.targetMinutes > 0 && (
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                          <span>進度</span>
+                          <span className="font-medium">
+                            {plan.completedMinutes || 0}/{plan.targetMinutes} 分鐘
+                            {plan.pomodoroCount && plan.pomodoroCount > 0 ? ` · ${plan.pomodoroCount}🍅` : ''}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-orange-400 rounded-full transition-all"
+                            style={{ width: `${Math.min(100, ((plan.completedMinutes || 0) / plan.targetMinutes) * 100)}%` }}
+                          />
+                        </div>
                       </div>
                     )}
+
+                    {/* Location - if available */}
+                    {plan.location && (
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {plan.location}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Action button */}
                   {!plan.completed && !isRunning && (() => {
                     // 如果計畫有設定目標時長，檢查剩餘時長
                     if (plan.targetMinutes && plan.targetMinutes > 0) {

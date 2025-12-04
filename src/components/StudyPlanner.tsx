@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, AlarmClockCheck, ListChecks, Trash2, BellRing, ChevronLeft, ChevronRight, ChevronDown, Check } from 'lucide-react';
+import { Calendar, AlarmClockCheck, ListChecks, Trash2, BellRing, ChevronLeft, ChevronRight, ChevronDown, Check, MapPin } from 'lucide-react';
 import { User } from '../App';
 import * as Select from '@radix-ui/react-select';
 
@@ -591,92 +591,93 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
         {selectedPlans.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">這天還沒有任務，趕緊安排吧！</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {selectedPlans.map((plan) => (
-              <div key={plan.id} className="flex gap-3 items-stretch">
-                {/* 時間軸 */}
-                <div className="flex flex-col items-center w-14 pt-1">
-                  <span className="text-xs font-medium text-gray-600">{plan.startTime}</span>
-                  <div className="flex-1 w-0.5 bg-gray-300 my-1.5"></div>
-                  <span className="text-xs font-medium text-gray-600">{plan.endTime}</span>
-                </div>
+              <div
+                key={plan.id}
+                className={`rounded-xl p-4 transition-all ${
+                  plan.completed
+                    ? 'bg-green-50/50'
+                    : 'bg-gray-50/50'
+                } hover:shadow-sm`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={plan.completed}
+                    onChange={() => toggleCompleted(plan.id)}
+                    className="mt-0.5 w-5 h-5 rounded border-gray-300 flex-shrink-0"
+                  />
 
-                {/* 卡片內容 */}
-                <article
-                  className={`flex-1 rounded-2xl p-4 border transition-all ${
-                    plan.completed
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-gray-50 border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={plan.completed}
-                      onChange={() => toggleCompleted(plan.id)}
-                      className="mt-0.5 w-5 h-5 rounded border-gray-300"
-                    />
-                    <div className="flex-1 min-w-0">
-                      {/* 標題行 */}
-                      <div className="flex items-center gap-2 mb-2">
+                  {/* Main content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Header: Title + Subject */}
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className={`font-semibold text-base ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          {plan.title}
+                        </h4>
                         {plan.subject && (
-                          <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded font-medium">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-medium flex-shrink-0">
                             {plan.subject}
                           </span>
                         )}
-                        <h4 className={`font-semibold text-base ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                          {plan.title}
-                        </h4>
                       </div>
 
-                      {/* 詳細資訊 */}
-                      <div className="text-xs text-gray-500 space-y-1">
-                        {plan.location && (
-                          <div className="flex items-center gap-1">
-                            <span>📍</span>
-                            <span>{plan.location}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <span>🔔</span>
-                          <span>提醒 {plan.reminderTime}</span>
-                        </div>
-                      </div>
+                      {/* Time */}
+                      <p className="text-sm text-gray-500">
+                        {plan.startTime} - {plan.endTime}
+                      </p>
                     </div>
 
-                    {/* 操作按鈕 */}
-                    <div className="flex gap-2">
-                      <button
-                        className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                        onClick={() => {
-                          const startMinutes = timeToMinutes(plan.startTime);
-                          const endMinutes = timeToMinutes(plan.endTime);
-                          const duration = endMinutes - startMinutes;
-
-                          setForm((prev) => ({
-                            ...prev,
-                            title: plan.title,
-                            subject: plan.subject || '',
-                            date: plan.date,
-                            start: plan.startTime,
-                            duration: duration,
-                            reminder: plan.reminderTime || suggestReminderTime(plan.startTime),
-                            location: plan.location || ''
-                          }));
-                          setSelectedDate(plan.date);
-                        }}
-                      >
-                        編輯
-                      </button>
-                      <button
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                        onClick={() => handleDeleteClick(plan.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {/* Additional info */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                      {plan.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {plan.location}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <BellRing className="w-3 h-3" />
+                        {plan.reminderTime}
+                      </span>
                     </div>
                   </div>
-                </article>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button
+                      className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      onClick={() => {
+                        const startMinutes = timeToMinutes(plan.startTime);
+                        const endMinutes = timeToMinutes(plan.endTime);
+                        const duration = endMinutes - startMinutes;
+
+                        setForm((prev) => ({
+                          ...prev,
+                          title: plan.title,
+                          subject: plan.subject || '',
+                          date: plan.date,
+                          start: plan.startTime,
+                          duration: duration,
+                          reminder: plan.reminderTime || suggestReminderTime(plan.startTime),
+                          location: plan.location || ''
+                        }));
+                        setSelectedDate(plan.date);
+                      }}
+                    >
+                      編輯
+                    </button>
+                    <button
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      onClick={() => handleDeleteClick(plan.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
