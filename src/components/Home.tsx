@@ -776,7 +776,7 @@ const toggleTimer = () => {
       {/* Confirmation Dialog */}
       {confirmDialog.show && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-6 pointer-events-none">
-          <div className="bg-white rounded-2xl shadow-xl pointer-events-auto w-72">
+          <div className="bg-white rounded-2xl shadow-xl pointer-events-auto w-72 border border-gray-300">
             {/* Content */}
             <div className="p-5 text-center">
               <div className="text-4xl mb-3">
