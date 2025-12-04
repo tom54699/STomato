@@ -617,14 +617,22 @@ const toggleTimer = () => {
             </span>
           </div>
           <div className="space-y-3">
-            {todayPlans.map((plan) => (
+            {todayPlans.map((plan, index) => {
+              // 不同卡片輪替使用不同顏色
+              const colors = [
+                { bg: 'bg-gradient-to-r from-indigo-50 to-purple-50', border: 'border-indigo-200' },
+                { bg: 'bg-gradient-to-r from-blue-50 to-cyan-50', border: 'border-blue-200' },
+                { bg: 'bg-gradient-to-r from-orange-50 to-amber-50', border: 'border-orange-200' },
+                { bg: 'bg-gradient-to-r from-pink-50 to-rose-50', border: 'border-pink-200' },
+              ];
+              const colorScheme = plan.completed
+                ? { bg: 'bg-green-50', border: 'border-green-200' }
+                : colors[index % colors.length];
+
+              return (
               <div
                 key={plan.id}
-                className={`rounded-2xl p-4 border-2 transition-all ${
-                  plan.completed
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 hover:shadow-md'
-                }`}
+                className={`rounded-2xl p-4 border-2 transition-all ${colorScheme.bg} ${colorScheme.border} hover:shadow-md`}
               >
                 <div className="flex items-center gap-3">
                   {/* Manual completion checkbox */}
@@ -768,7 +776,8 @@ const toggleTimer = () => {
                   })()}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
