@@ -775,20 +775,20 @@ const toggleTimer = () => {
 
       {/* Confirmation Dialog */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 px-6 pointer-events-none">
-          <div className="w-full max-w-[280px] bg-white rounded-3xl shadow-2xl pointer-events-auto overflow-hidden">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-6 pointer-events-none">
+          <div className="bg-white rounded-2xl shadow-xl pointer-events-auto w-72">
             {/* Content */}
-            <div className="p-6 text-center space-y-3">
-              <div className="text-5xl">
+            <div className="p-5 text-center">
+              <div className="text-4xl mb-3">
                 {confirmDialog.type === 'suggest' ? '💡' : '⚠️'}
               </div>
-              <p className="text-gray-700 text-sm leading-relaxed font-medium">
+              <p className="text-gray-700 text-xs leading-relaxed">
                 {confirmDialog.message}
               </p>
             </div>
 
             {/* Actions */}
-            <div className="px-4 pb-4 space-y-2">
+            <div className="border-t border-gray-200">
               {confirmDialog.type === 'suggest' ? (
                 <>
                   <button
@@ -798,9 +798,9 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3.5 rounded-2xl font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                    className="w-full py-3 text-green-600 font-semibold text-sm border-b border-gray-200 hover:bg-gray-50 active:bg-gray-100"
                   >
-                    完成全部 {confirmDialog.suggestedMinutes} 分鐘
+                    {confirmDialog.suggestedMinutes} 分鐘
                   </button>
                   <button
                     onClick={() => {
@@ -809,13 +809,21 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'suggest', message: '' });
                     }}
-                    className="w-full bg-gray-100 text-gray-700 py-3.5 rounded-2xl font-bold hover:bg-gray-200 active:scale-95 transition-all"
+                    className="w-full py-3 text-gray-600 font-medium text-sm hover:bg-gray-50 active:bg-gray-100"
                   >
-                    維持 {confirmDialog.originalMinutes} 分鐘
+                    {confirmDialog.originalMinutes} 分鐘
                   </button>
                 </>
               ) : (
-                <>
+                <div className="flex">
+                  <button
+                    onClick={() => {
+                      setConfirmDialog({ show: false, type: 'warning', message: '' });
+                    }}
+                    className="flex-1 py-3 text-gray-600 font-medium text-sm border-r border-gray-200 hover:bg-gray-50 active:bg-gray-100"
+                  >
+                    取消
+                  </button>
                   <button
                     onClick={() => {
                       if (confirmDialog.planId && confirmDialog.originalMinutes) {
@@ -823,19 +831,11 @@ const toggleTimer = () => {
                       }
                       setConfirmDialog({ show: false, type: 'warning', message: '' });
                     }}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3.5 rounded-2xl font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                    className="flex-1 py-3 text-orange-600 font-semibold text-sm hover:bg-gray-50 active:bg-gray-100"
                   >
-                    確定啟動
+                    確定
                   </button>
-                  <button
-                    onClick={() => {
-                      setConfirmDialog({ show: false, type: 'warning', message: '' });
-                    }}
-                    className="w-full bg-gray-100 text-gray-700 py-3.5 rounded-2xl font-bold hover:bg-gray-200 active:scale-95 transition-all"
-                  >
-                    取消
-                  </button>
-                </>
+                </div>
               )}
             </div>
           </div>
