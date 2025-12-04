@@ -118,44 +118,78 @@ function generateAvailableTimeSlots(plans: StudyPlan[], date: string, durationMi
   return availableSlots;
 }
 
-// 生成時間表以顯示該天的時間段狀態
-function generateTimeSlotStatus(plans: StudyPlan[], date: string, durationMinutes: number) {
-  const dayPlans = plans.filter(plan => plan.date === date);
-  const timeSlots = [];
+// 生成簡潔的時間選項（合併被佔用區間）
+function generateCompactTimeOptions(plans: StudyPlan[], date: string, durationMinutes: number) {
+  const dayPlans = plans.filter(plan => plan.date === date).sort((a, b) => {
+    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+  });
 
-  // 從早上7點到晚上10點，每15分鐘一個時段
-  for (let hour = 7; hour <= 22; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
-      const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = startMinutes + durationMinutes;
+  const options: Array<{
+    value: string;
+    label: string;
+    disabled: boolean;
+    isOccupied?: boolean;
+    planTitle?: string;
+  }> = [];
 
-      // 檢查是否超過一天
-      if (endMinutes >= 24 * 60) {
-        continue;
+  let currentTime = 7 * 60; // 從 7:00 開始（分鐘）
+  const endTime = 22 * 60; // 到 22:00（分鐘）
+
+  for (const plan of dayPlans) {
+    const planStart = timeToMinutes(plan.startTime);
+    const planEnd = timeToMinutes(plan.endTime);
+
+    // 添加此計畫前的可用時段
+    while (currentTime < planStart && currentTime < endTime) {
+      const slotEnd = currentTime + durationMinutes;
+
+      // 確保不超過當天和不與當前計畫重疊
+      if (slotEnd <= planStart && slotEnd <= 24 * 60) {
+        const timeStr = minutesToTime(currentTime);
+        options.push({
+          value: timeStr,
+          label: `${timeStr}`,
+          disabled: false,
+        });
       }
 
-      // 找衝突的計畫
-      let conflictingPlan: StudyPlan | null = null;
-      for (const plan of dayPlans) {
-        const planStart = timeToMinutes(plan.startTime);
-        const planEnd = timeToMinutes(plan.endTime);
+      currentTime += 15; // 每15分鐘
+    }
 
-        if (!(endMinutes <= planStart || startMinutes >= planEnd)) {
-          conflictingPlan = plan;
-          break;
-        }
-      }
-
-      timeSlots.push({
-        time: startTime,
-        available: !conflictingPlan,
-        conflictingPlan: conflictingPlan,
+    // 添加被佔用區間（只顯示一行）
+    if (planStart >= 7 * 60 && planStart < endTime) {
+      options.push({
+        value: '',
+        label: `${plan.startTime}-${plan.endTime} ${plan.title}（已佔用）`,
+        disabled: true,
+        isOccupied: true,
+        planTitle: plan.title,
       });
     }
+
+    // 跳過被佔用的時段
+    currentTime = Math.max(currentTime, planEnd);
+    // 對齊到下一個15分鐘
+    currentTime = Math.ceil(currentTime / 15) * 15;
   }
 
-  return timeSlots;
+  // 添加最後一個計畫之後的可用時段
+  while (currentTime < endTime) {
+    const slotEnd = currentTime + durationMinutes;
+
+    if (slotEnd <= 24 * 60) {
+      const timeStr = minutesToTime(currentTime);
+      options.push({
+        value: timeStr,
+        label: `${timeStr}`,
+        disabled: false,
+      });
+    }
+
+    currentTime += 15;
+  }
+
+  return options;
 }
 
 
@@ -232,14 +266,9 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
   // 獲取可用的時間段（僅用於檢測衝突）
-  const availableTimeSlots = useMemo(() =>
-    generateAvailableTimeSlots(plans, form.date, form.duration),
-    [plans, form.date, form.duration]
-  );
-
-  // 獲取時間表狀態（用於視覺化顯示）
-  const timeSlotStatus = useMemo(() =>
-    generateTimeSlotStatus(plans, form.date, form.duration),
+  // 獲取簡潔的時間選項（合併被佔用區間）
+  const compactTimeOptions = useMemo(() =>
+    generateCompactTimeOptions(plans, form.date, form.duration),
     [plans, form.date, form.duration]
   );
 
@@ -486,11 +515,15 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
               value={form.start}
               onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
             >
-              <option value="">✨ 請選擇開始時間 ✨</option>
-              {timeSlotStatus.map((slot) => (
-                <option key={slot.time} value={slot.time} disabled={!slot.available}>
-                  {slot.available ? '✅' : '❌'} {slot.time}
-                  {!slot.available && ` - 與${slot.conflictingPlan?.title}衝突`}
+              <option value="">請選擇開始時間</option>
+              {compactTimeOptions.map((option, index) => (
+                <option
+                  key={option.value || `occupied-${index}`}
+                  value={option.value}
+                  disabled={option.disabled}
+                  className={option.isOccupied ? 'text-gray-400 italic' : ''}
+                >
+                  {option.isOccupied ? '─ ' : ''}{option.label}
                 </option>
               ))}
             </select>
