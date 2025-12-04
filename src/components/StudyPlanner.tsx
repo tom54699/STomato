@@ -265,12 +265,16 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
-  // 獲取可用的時間段（僅用於檢測衝突）
   // 獲取簡潔的時間選項（合併被佔用區間）
   const compactTimeOptions = useMemo(() =>
     generateCompactTimeOptions(plans, form.date, form.duration),
     [plans, form.date, form.duration]
   );
+
+  // 檢查所選時間是否可用
+  const isTimeAvailable = useMemo(() => {
+    return compactTimeOptions.some(option => option.value === form.start && !option.disabled);
+  }, [compactTimeOptions, form.start]);
 
   // 提取歷史科目（用於 datalist 自動建議）
   const historicalSubjects = useMemo(() => {
@@ -550,7 +554,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           )}
 
           {/* 時間衝突檢查提示 */}
-          {form.start && form.duration && !availableTimeSlots.includes(form.start) && (
+          {form.start && form.duration && !isTimeAvailable && (
             <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
               <div className="text-red-700 font-semibold">
                 ⚠️ 此時段與現有計畫衝突！
@@ -563,14 +567,14 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
           <button
             type="submit"
-            disabled={!form.title.trim() || !form.start || !availableTimeSlots.includes(form.start)}
+            disabled={!form.title.trim() || !form.start || !isTimeAvailable}
             className={`py-3 rounded-2xl shadow-lg font-semibold transition-all ${
-              !form.title.trim() || !form.start || !availableTimeSlots.includes(form.start)
+              !form.title.trim() || !form.start || !isTimeAvailable
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                 : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-xl hover:scale-105 active:scale-95'
             }`}
           >
-            {!form.start ? '請選擇開始時間' : !availableTimeSlots.includes(form.start) ? '請選擇可用時段' : '加入計畫'}
+            {!form.start ? '請選擇開始時間' : !isTimeAvailable ? '請選擇可用時段' : '加入計畫'}
           </button>
         </form>
       </section>
