@@ -633,9 +633,8 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           <div className="bg-white rounded-2xl shadow-xl pointer-events-auto w-64 border border-gray-300">
             {/* Content */}
             <div className="p-5 text-center">
-              <div className="text-4xl mb-3">🗑️</div>
               <p className="text-gray-900 font-semibold mb-1 text-sm">
-                {deleteConfirm.planTitle}
+                刪除「{deleteConfirm.planTitle}」？
               </p>
               {deleteConfirm.hasData && (
                 <p className="text-red-600 text-xs mt-2">

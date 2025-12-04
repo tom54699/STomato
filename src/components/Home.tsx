@@ -779,10 +779,7 @@ const toggleTimer = () => {
           <div className="bg-white rounded-2xl shadow-xl pointer-events-auto w-72 border border-gray-300">
             {/* Content */}
             <div className="p-5 text-center">
-              <div className="text-4xl mb-3">
-                {confirmDialog.type === 'suggest' ? '💡' : '⚠️'}
-              </div>
-              <p className="text-gray-700 text-xs leading-relaxed">
+              <p className="text-gray-700 text-sm leading-relaxed">
                 {confirmDialog.message}
               </p>
             </div>
