@@ -82,117 +82,6 @@ function calculateReminderDateTime(date: string, startTime: string): string {
   return `${reminderDate}T${reminderTime}:00`;
 }
 
-// 生成建議的開始時間選項（排除被占用的時段）
-function generateAvailableTimeSlots(plans: StudyPlan[], date: string, durationMinutes: number): string[] {
-  const dayPlans = plans.filter(plan => plan.date === date);
-  const availableSlots: string[] = [];
-
-  // 從早上7點到晚上10點，每15分鐘一個時段
-  for (let hour = 7; hour <= 22; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
-      const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      const startMinutes = timeToMinutes(startTime);
-      const endMinutes = startMinutes + durationMinutes;
-
-      // 檢查是否超過一天
-      if (endMinutes >= 24 * 60) continue;
-
-      // 檢查是否與現有計畫衝突
-      let hasConflict = false;
-      for (const plan of dayPlans) {
-        const planStart = timeToMinutes(plan.startTime);
-        const planEnd = timeToMinutes(plan.endTime);
-
-        if (!(endMinutes <= planStart || startMinutes >= planEnd)) {
-          hasConflict = true;
-          break;
-        }
-      }
-
-      if (!hasConflict) {
-        availableSlots.push(startTime);
-      }
-    }
-  }
-
-  return availableSlots;
-}
-
-// 生成簡潔的時間選項（合併被佔用區間）
-function generateCompactTimeOptions(plans: StudyPlan[], date: string, durationMinutes: number) {
-  const dayPlans = plans.filter(plan => plan.date === date).sort((a, b) => {
-    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-  });
-
-  const options: Array<{
-    value: string;
-    label: string;
-    disabled: boolean;
-    isOccupied?: boolean;
-    planTitle?: string;
-  }> = [];
-
-  let currentTime = 7 * 60; // 從 7:00 開始（分鐘）
-  const endTime = 22 * 60; // 到 22:00（分鐘）
-
-  for (const plan of dayPlans) {
-    const planStart = timeToMinutes(plan.startTime);
-    const planEnd = timeToMinutes(plan.endTime);
-
-    // 添加此計畫前的可用時段
-    while (currentTime < planStart && currentTime < endTime) {
-      const slotEnd = currentTime + durationMinutes;
-
-      // 確保不超過當天和不與當前計畫重疊
-      if (slotEnd <= planStart && slotEnd <= 24 * 60) {
-        const timeStr = minutesToTime(currentTime);
-        options.push({
-          value: timeStr,
-          label: `${timeStr}`,
-          disabled: false,
-        });
-      }
-
-      currentTime += 15; // 每15分鐘
-    }
-
-    // 添加被佔用區間（只顯示一行）
-    if (planStart >= 7 * 60 && planStart < endTime) {
-      options.push({
-        value: '',
-        label: `${plan.startTime}-${plan.endTime} ${plan.title}（已佔用）`,
-        disabled: true,
-        isOccupied: true,
-        planTitle: plan.title,
-      });
-    }
-
-    // 跳過被佔用的時段
-    currentTime = Math.max(currentTime, planEnd);
-    // 對齊到下一個15分鐘
-    currentTime = Math.ceil(currentTime / 15) * 15;
-  }
-
-  // 添加最後一個計畫之後的可用時段
-  while (currentTime < endTime) {
-    const slotEnd = currentTime + durationMinutes;
-
-    if (slotEnd <= 24 * 60) {
-      const timeStr = minutesToTime(currentTime);
-      options.push({
-        value: timeStr,
-        label: `${timeStr}`,
-        disabled: false,
-      });
-    }
-
-    currentTime += 15;
-  }
-
-  return options;
-}
-
-
 export function StudyPlanner({ user }: StudyPlannerProps) {
   const today = formatDate(new Date());
   const [plans, setPlans] = useState<StudyPlan[]>([]);
@@ -265,16 +154,25 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
-  // 獲取簡潔的時間選項（合併被佔用區間）
-  const compactTimeOptions = useMemo(() =>
-    generateCompactTimeOptions(plans, form.date, form.duration),
-    [plans, form.date, form.duration]
-  );
-
-  // 檢查所選時間是否可用
+  // 檢查所選時間是否與現有計畫衝突
   const isTimeAvailable = useMemo(() => {
-    return compactTimeOptions.some(option => option.value === form.start && !option.disabled);
-  }, [compactTimeOptions, form.start]);
+    if (!form.start) return false;
+
+    const startMinutes = timeToMinutes(form.start);
+    const endMinutes = startMinutes + form.duration;
+
+    const dayPlans = plans.filter(plan => plan.date === form.date);
+
+    // 檢查是否與任何計畫衝突
+    const hasConflict = dayPlans.some(plan => {
+      const planStart = timeToMinutes(plan.startTime);
+      const planEnd = timeToMinutes(plan.endTime);
+      // 如果時段有重疊就是衝突
+      return !(endMinutes <= planStart || startMinutes >= planEnd);
+    });
+
+    return !hasConflict;
+  }, [plans, form.date, form.start, form.duration]);
 
   // 提取歷史科目（用於 datalist 自動建議）
   const historicalSubjects = useMemo(() => {
@@ -508,29 +406,49 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </select>
           </div>
 
-          {/* 開始時間下拉選單 */}
+          {/* 開始時間：兩階段選擇 */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block flex items-center gap-2">
               <span className="text-green-500">🕐</span>
               選擇開始時間
             </label>
-            <select
-              className="w-full rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
-              value={form.start}
-              onChange={(event) => setForm((prev) => ({ ...prev, start: event.target.value }))}
-            >
-              <option value="">請選擇開始時間</option>
-              {compactTimeOptions.map((option, index) => (
-                <option
-                  key={option.value || `occupied-${index}`}
-                  value={option.value}
-                  disabled={option.disabled}
-                  className={option.isOccupied ? 'text-gray-400 italic' : ''}
-                >
-                  {option.isOccupied ? '─ ' : ''}{option.label}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-2 gap-3">
+              {/* 小時選擇 */}
+              <select
+                className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
+                value={form.start ? form.start.split(':')[0] : ''}
+                onChange={(event) => {
+                  const hour = event.target.value;
+                  const minute = form.start ? form.start.split(':')[1] : '00';
+                  setForm((prev) => ({ ...prev, start: hour ? `${hour}:${minute}` : '' }));
+                }}
+              >
+                <option value="">小時</option>
+                {Array.from({ length: 16 }, (_, i) => i + 7).map(hour => (
+                  <option key={hour} value={hour.toString().padStart(2, '0')}>
+                    {hour}:00
+                  </option>
+                ))}
+              </select>
+
+              {/* 分鐘選擇 */}
+              <select
+                className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3 text-gray-800 font-medium shadow-sm hover:border-green-400 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all cursor-pointer"
+                value={form.start ? form.start.split(':')[1] : ''}
+                onChange={(event) => {
+                  const hour = form.start ? form.start.split(':')[0] : '19';
+                  const minute = event.target.value;
+                  setForm((prev) => ({ ...prev, start: `${hour}:${minute}` }));
+                }}
+                disabled={!form.start || !form.start.split(':')[0]}
+              >
+                <option value="">分鐘</option>
+                <option value="00">00 分</option>
+                <option value="15">15 分</option>
+                <option value="30">30 分</option>
+                <option value="45">45 分</option>
+              </select>
+            </div>
           </div>
 
           <div>
