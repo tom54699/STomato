@@ -154,24 +154,50 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
   const selectedPlans = useMemo(() => plans.filter((plan) => plan.date === selectedDate), [plans, selectedDate]);
 
+  // 檢查特定時間是否與計畫衝突的通用函數
+  const checkTimeConflict = (timeStr: string, duration: number, date: string) => {
+    const startMinutes = timeToMinutes(timeStr);
+    const endMinutes = startMinutes + duration;
+    const dayPlans = plans.filter(plan => plan.date === date);
+
+    return dayPlans.some(plan => {
+      const planStart = timeToMinutes(plan.startTime);
+      const planEnd = timeToMinutes(plan.endTime);
+      return !(endMinutes <= planStart || startMinutes >= planEnd);
+    });
+  };
+
+  // 檢查某個小時是否應該被禁用（所有分鐘選項都衝突）
+  const isHourDisabled = useMemo(() => {
+    const disabledHours = new Set<number>();
+    const minutes = [0, 15, 30, 45];
+
+    for (let hour = 7; hour <= 22; hour++) {
+      const allMinutesConflict = minutes.every(minute => {
+        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        return checkTimeConflict(timeStr, form.duration, form.date);
+      });
+
+      if (allMinutesConflict) {
+        disabledHours.add(hour);
+      }
+    }
+
+    return disabledHours;
+  }, [plans, form.date, form.duration]);
+
+  // 檢查某個分鐘是否應該被禁用
+  const isMinuteDisabled = (minute: number) => {
+    if (!form.start) return false;
+    const hour = form.start.split(':')[0];
+    const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`;
+    return checkTimeConflict(timeStr, form.duration, form.date);
+  };
+
   // 檢查所選時間是否與現有計畫衝突
   const isTimeAvailable = useMemo(() => {
     if (!form.start) return false;
-
-    const startMinutes = timeToMinutes(form.start);
-    const endMinutes = startMinutes + form.duration;
-
-    const dayPlans = plans.filter(plan => plan.date === form.date);
-
-    // 檢查是否與任何計畫衝突
-    const hasConflict = dayPlans.some(plan => {
-      const planStart = timeToMinutes(plan.startTime);
-      const planEnd = timeToMinutes(plan.endTime);
-      // 如果時段有重疊就是衝突
-      return !(endMinutes <= planStart || startMinutes >= planEnd);
-    });
-
-    return !hasConflict;
+    return !checkTimeConflict(form.start, form.duration, form.date);
   }, [plans, form.date, form.start, form.duration]);
 
   // 提取歷史科目（用於 datalist 自動建議）
@@ -425,7 +451,11 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
               >
                 <option value="">小時</option>
                 {Array.from({ length: 16 }, (_, i) => i + 7).map(hour => (
-                  <option key={hour} value={hour.toString().padStart(2, '0')}>
+                  <option
+                    key={hour}
+                    value={hour.toString().padStart(2, '0')}
+                    disabled={isHourDisabled.has(hour)}
+                  >
                     {hour}:00
                   </option>
                 ))}
@@ -443,10 +473,10 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                 disabled={!form.start || !form.start.split(':')[0]}
               >
                 <option value="">分鐘</option>
-                <option value="00">00 分</option>
-                <option value="15">15 分</option>
-                <option value="30">30 分</option>
-                <option value="45">45 分</option>
+                <option value="00" disabled={isMinuteDisabled(0)}>00 分</option>
+                <option value="15" disabled={isMinuteDisabled(15)}>15 分</option>
+                <option value="30" disabled={isMinuteDisabled(30)}>30 分</option>
+                <option value="45" disabled={isMinuteDisabled(45)}>45 分</option>
               </select>
             </div>
           </div>
