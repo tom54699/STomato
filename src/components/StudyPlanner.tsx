@@ -118,7 +118,7 @@ function generateAvailableTimeSlots(plans: StudyPlan[], date: string, durationMi
   return availableSlots;
 }
 
-// 生成簡潔的時間選項（智能間隔 + 合併被佔用區間）
+// 生成簡潔的時間選項（合併被佔用區間）
 function generateCompactTimeOptions(plans: StudyPlan[], date: string, durationMinutes: number) {
   const dayPlans = plans.filter(plan => plan.date === date).sort((a, b) => {
     return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
@@ -132,74 +132,19 @@ function generateCompactTimeOptions(plans: StudyPlan[], date: string, durationMi
     planTitle?: string;
   }> = [];
 
-  const startTime = 7 * 60; // 從 7:00 開始（分鐘）
+  let currentTime = 7 * 60; // 從 7:00 開始（分鐘）
   const endTime = 22 * 60; // 到 22:00（分鐘）
 
-  // 判斷某個時間是否接近計畫（前後 1 小時內）
-  const isNearPlan = (timeMinutes: number) => {
-    return dayPlans.some(plan => {
-      const planStart = timeToMinutes(plan.startTime);
-      const planEnd = timeToMinutes(plan.endTime);
-      // 在計畫前後 1 小時範圍內
-      return (timeMinutes >= planStart - 60 && timeMinutes <= planStart + 60) ||
-             (timeMinutes >= planEnd - 60 && timeMinutes <= planEnd + 60);
-    });
-  };
+  for (const plan of dayPlans) {
+    const planStart = timeToMinutes(plan.startTime);
+    const planEnd = timeToMinutes(plan.endTime);
 
-  // 檢查時間段是否與計畫衝突
-  const hasConflict = (startMinutes: number) => {
-    const endMinutes = startMinutes + durationMinutes;
-    return dayPlans.some(plan => {
-      const planStart = timeToMinutes(plan.startTime);
-      const planEnd = timeToMinutes(plan.endTime);
-      return !(endMinutes <= planStart || startMinutes >= planEnd);
-    });
-  };
+    // 添加此計畫前的可用時段
+    while (currentTime < planStart && currentTime < endTime) {
+      const slotEnd = currentTime + durationMinutes;
 
-  // 收集所有被佔用的區間
-  const occupiedRanges = dayPlans.map(plan => ({
-    start: timeToMinutes(plan.startTime),
-    end: timeToMinutes(plan.endTime),
-    plan
-  }));
-
-  let currentTime = startTime;
-
-  while (currentTime < endTime) {
-    // 檢查當前時間是否在某個被佔用區間內
-    const occupiedRange = occupiedRanges.find(range =>
-      currentTime >= range.start && currentTime < range.end
-    );
-
-    if (occupiedRange) {
-      // 添加被佔用區間標記（只在區間開始時添加一次）
-      if (currentTime === occupiedRange.start) {
-        options.push({
-          value: '',
-          label: `${occupiedRange.plan.startTime}-${occupiedRange.plan.endTime} ${occupiedRange.plan.title}（已佔用）`,
-          disabled: true,
-          isOccupied: true,
-          planTitle: occupiedRange.plan.title,
-        });
-      }
-      // 跳到這個區間結束後
-      currentTime = occupiedRange.end;
-      // 對齊到下一個 15 分鐘
-      currentTime = Math.ceil(currentTime / 15) * 15;
-      continue;
-    }
-
-    // 檢查這個時間點是否可用（不會導致衝突）
-    const slotEnd = currentTime + durationMinutes;
-    const canUse = slotEnd <= 24 * 60 && !hasConflict(currentTime);
-
-    if (canUse) {
-      // 決定是否要顯示這個時間點
-      const isHourOrHalfHour = currentTime % 60 === 0 || currentTime % 60 === 30;
-      const nearPlan = isNearPlan(currentTime);
-
-      // 整點、半點一定顯示，或者接近計畫時顯示所有 15 分鐘間隔
-      if (isHourOrHalfHour || nearPlan) {
+      // 確保不超過當天和不與當前計畫重疊
+      if (slotEnd <= planStart && slotEnd <= 24 * 60) {
         const timeStr = minutesToTime(currentTime);
         options.push({
           value: timeStr,
@@ -207,9 +152,41 @@ function generateCompactTimeOptions(plans: StudyPlan[], date: string, durationMi
           disabled: false,
         });
       }
+
+      currentTime += 15; // 每15分鐘
     }
 
-    currentTime += 15; // 每次前進 15 分鐘檢查
+    // 添加被佔用區間（只顯示一行）
+    if (planStart >= 7 * 60 && planStart < endTime) {
+      options.push({
+        value: '',
+        label: `${plan.startTime}-${plan.endTime} ${plan.title}（已佔用）`,
+        disabled: true,
+        isOccupied: true,
+        planTitle: plan.title,
+      });
+    }
+
+    // 跳過被佔用的時段
+    currentTime = Math.max(currentTime, planEnd);
+    // 對齊到下一個15分鐘
+    currentTime = Math.ceil(currentTime / 15) * 15;
+  }
+
+  // 添加最後一個計畫之後的可用時段
+  while (currentTime < endTime) {
+    const slotEnd = currentTime + durationMinutes;
+
+    if (slotEnd <= 24 * 60) {
+      const timeStr = minutesToTime(currentTime);
+      options.push({
+        value: timeStr,
+        label: `${timeStr}`,
+        disabled: false,
+      });
+    }
+
+    currentTime += 15;
   }
 
   return options;
