@@ -592,44 +592,62 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           <p className="text-sm text-gray-400 text-center py-6">這天還沒有任務，趕緊安排吧！</p>
         ) : (
           selectedPlans.map((plan) => (
-            <div key={plan.id} className="flex gap-4 items-stretch">
-              <div className="flex flex-col items-center w-16">
-                <span className="text-xs text-gray-500">{plan.startTime}</span>
-                <div className="flex-1 w-px bg-gray-200 my-2"></div>
-                <span className="text-xs text-gray-500">{plan.endTime}</span>
+            <div key={plan.id} className="flex gap-3 items-start">
+              {/* 時間軸 */}
+              <div className="flex flex-col items-center w-14 pt-1">
+                <span className="text-xs font-semibold text-gray-600">{plan.startTime}</span>
+                <div className="flex-1 w-0.5 bg-gradient-to-b from-blue-200 to-blue-100 my-1.5 min-h-[20px]"></div>
+                <span className="text-xs font-semibold text-gray-600">{plan.endTime}</span>
               </div>
+
+              {/* 卡片內容 */}
               <article
-                className={`flex-1 border rounded-2xl p-4 flex items-center gap-3 ${
-                  plan.completed ? 'border-green-200 bg-green-50' : 'border-gray-100'
+                className={`flex-1 rounded-2xl p-4 shadow-sm transition-all ${
+                  plan.completed
+                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200'
+                    : 'bg-white border border-gray-200 hover:shadow-md'
                 }`}
               >
-                <input
-                  type="checkbox"
-                  checked={plan.completed}
-                  onChange={() => toggleCompleted(plan.id)}
-                  className="w-5 h-5"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                {/* 頭部：科目標籤 + 標題 */}
+                <div className="flex items-start gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={plan.completed}
+                    onChange={() => toggleCompleted(plan.id)}
+                    className="mt-0.5 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex-1 min-w-0">
                     {plan.subject && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                      <span className="inline-block px-2.5 py-0.5 bg-blue-500 text-white text-xs rounded-md font-medium mb-1.5">
                         {plan.subject}
                       </span>
                     )}
-                    <h4 className={`font-semibold ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                    <h4 className={`text-base font-semibold leading-tight ${
+                      plan.completed ? 'text-gray-400 line-through' : 'text-gray-800'
+                    }`}>
                       {plan.title}
                     </h4>
                   </div>
-                <p className="text-sm text-gray-500">
-                    {plan.startTime} - {plan.endTime}
-                    {plan.location ? ` · ${plan.location}` : ''} · 提醒 {plan.reminderTime}
-                </p>
                 </div>
-                <div className="flex flex-col gap-2 text-sm">
+
+                {/* 詳細資訊 */}
+                <div className="flex items-center gap-4 text-xs text-gray-500 ml-8 mb-3">
+                  {plan.location && (
+                    <span className="flex items-center gap-1">
+                      <span className="text-gray-400">📍</span>
+                      {plan.location}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <span className="text-gray-400">🔔</span>
+                    {plan.reminderTime}
+                  </span>
+                </div>
+
+                {/* 操作按鈕 */}
+                <div className="flex items-center gap-2 ml-8">
                   <button
-                    className="text-blue-500"
                     onClick={() => {
-                      // 計算時長
                       const startMinutes = timeToMinutes(plan.startTime);
                       const endMinutes = timeToMinutes(plan.endTime);
                       const duration = endMinutes - startMinutes;
@@ -646,11 +664,16 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                       }));
                       setSelectedDate(plan.date);
                     }}
+                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                   >
                     編輯
                   </button>
-                  <button className="text-gray-400" onClick={() => handleDeleteClick(plan.id)}>
-                    <Trash2 className="w-4 h-4" />
+                  <button
+                    onClick={() => handleDeleteClick(plan.id)}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 rounded-lg hover:bg-gray-100 hover:text-red-500 transition-colors flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    刪除
                   </button>
                 </div>
               </article>
