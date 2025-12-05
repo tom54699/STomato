@@ -83,6 +83,49 @@ function calculateReminderDateTime(date: string, startTime: string): string {
   return `${reminderDate}T${reminderTime}:00`;
 }
 
+// 找到下一個可用的時間段
+function findNextAvailableTime(
+  plans: StudyPlan[],
+  date: string,
+  durationMinutes: number,
+  afterTime?: string
+): string | null {
+  const dayPlans = plans
+    .filter(plan => plan.date === date)
+    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+  const startHour = 7;
+  const endHour = 23;
+
+  // 如果提供了 afterTime，向上取整到最近的 15 分鐘間隔
+  let startMinutesOfDay = startHour * 60;
+  if (afterTime) {
+    const afterMinutes = timeToMinutes(afterTime);
+    // 向上取整到最近的 15 分鐘
+    const remainder = afterMinutes % 15;
+    startMinutesOfDay = remainder === 0 ? afterMinutes : afterMinutes + (15 - remainder);
+  }
+
+  // 檢查所有可能的時間段（每15分鐘）
+  for (let totalMinutes = startMinutesOfDay; totalMinutes + durationMinutes <= endHour * 60; totalMinutes += 15) {
+    const endMinutes = totalMinutes + durationMinutes;
+
+    // 檢查是否與現有計畫衝突
+    const hasConflict = dayPlans.some(plan => {
+      const planStart = timeToMinutes(plan.startTime);
+      const planEnd = timeToMinutes(plan.endTime);
+      // 兩個時段衝突的條件：不是（結束 <= 開始 或 開始 >= 結束）
+      return !(endMinutes <= planStart || totalMinutes >= planEnd);
+    });
+
+    if (!hasConflict) {
+      return minutesToTime(totalMinutes);
+    }
+  }
+
+  return null;
+}
+
 export function StudyPlanner({ user }: StudyPlannerProps) {
   const today = formatDate(new Date());
   const [plans, setPlans] = useState<StudyPlan[]>([]);
@@ -212,6 +255,17 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     return Array.from(subjects).sort();
   }, [plans]);
 
+  // 提取歷史地點（用於 datalist 自動建議）
+  const historicalLocations = useMemo(() => {
+    const locations = new Set<string>();
+    plans.forEach(plan => {
+      if (plan.location && plan.location.trim()) {
+        locations.add(plan.location.trim());
+      }
+    });
+    return Array.from(locations).sort();
+  }, [plans]);
+
   // 當開始時間變化時，自動建議提醒時間
   useEffect(() => {
     if (form.start) {
@@ -257,15 +311,35 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
       completedMinutes: 0, // 已完成時長初始為0
       pomodoroCount: 0, // 番茄鐘數量初始為0
     };
-    setPlans([newPlan, ...plans]);
-    // 清空表單，保持日期不變，重置提醒時間
+    const updatedPlans = [newPlan, ...plans];
+    setPlans(updatedPlans);
+
+    // 尋找下一個可用的時間段（從剛建立的計畫結束時間開始）
+    let nextAvailableTime = findNextAvailableTime(
+      updatedPlans,
+      form.date,
+      90, // 預設時長
+      endTime // 從剛建立的計畫結束時間開始找
+    );
+
+    // 如果從結束時間找不到，嘗試從當天開始找
+    if (!nextAvailableTime) {
+      nextAvailableTime = findNextAvailableTime(
+        updatedPlans,
+        form.date,
+        90
+      );
+    }
+
+    // 清空表單，保持日期不變，設定下一個可用時間
+    const nextStartTime = nextAvailableTime || '19:00';
     setForm({
       title: '',
       subject: '',
       date: form.date,
-      start: '19:00',
+      start: nextStartTime,
       duration: 90,
-      reminder: suggestReminderTime('19:00'),
+      reminder: suggestReminderTime(nextStartTime),
       location: ''
     });
     setSelectedDate(form.date);
@@ -393,12 +467,20 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             </datalist>
             <p className="text-xs text-gray-500 mt-1">💡 填寫科目可獲得更精準的學習分析</p>
           </div>
-          <input
-            className="rounded-2xl border border-gray-200 px-4 py-3"
-            placeholder="地點（可選，例如圖書館 3F）"
-            value={form.location}
-            onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))}
-          />
+          <div>
+            <input
+              list="location-suggestions"
+              className="w-full rounded-2xl border border-gray-200 px-4 py-3"
+              placeholder="地點（可選，例如圖書館 3F）"
+              value={form.location}
+              onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))}
+            />
+            <datalist id="location-suggestions">
+              {historicalLocations.map((location) => (
+                <option key={location} value={location} />
+              ))}
+            </datalist>
+          </div>
 
           <div>
             <label className="text-sm text-gray-500">日期</label>
