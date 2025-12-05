@@ -156,6 +156,25 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     localStorage.setItem('studyPlans', JSON.stringify(plans));
   }, [plans]);
 
+  // 當 plans 載入或選擇的日期改變時，檢查並調整開始時間到可用時段
+  useEffect(() => {
+    if (plans.length > 0 && form.start && form.duration) {
+      // 檢查當前選擇的時間是否與計畫衝突
+      const hasConflict = checkTimeConflict(form.start, form.duration, form.date);
+      if (hasConflict) {
+        // 如果衝突，尋找下一個可用時間
+        const availableTime = findNextAvailableTime(plans, form.date, form.duration);
+        if (availableTime) {
+          setForm(prev => ({
+            ...prev,
+            start: availableTime,
+            reminder: suggestReminderTime(availableTime)
+          }));
+        }
+      }
+    }
+  }, [plans.length, form.date]); // 只在 plans 載入完成或日期改變時執行
+
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();

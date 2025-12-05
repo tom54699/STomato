@@ -702,8 +702,8 @@ const toggleTimer = () => {
                         return null;
                       }
 
-                      // 情況 1：計畫本身剩餘 ≤ 10 分鐘，讓使用者自己決定
-                      if (remainingMinutes <= 10) {
+                      // 情況 1：計畫本身剩餘 ≤ 15 分鐘，讓使用者自己決定
+                      if (remainingMinutes <= 15) {
                         const isExceeding = minutes > remainingMinutes;
                         return (
                           <button
@@ -729,11 +729,11 @@ const toggleTimer = () => {
                         );
                       }
 
-                      // 情況 2：剩餘 > 10 分鐘，檢查是否會剩下零頭
+                      // 情況 2：剩餘 > 15 分鐘，檢查是否會剩下零頭
                       const remainingAfter = remainingMinutes - minutes;
 
-                      // 如果完成後會剩餘 < 10 分鐘（但 > 0），建議一次完成
-                      if (remainingAfter > 0 && remainingAfter < 10) {
+                      // 如果完成後會剩餘 < 15 分鐘（但 > 0），建議一次完成
+                      if (remainingAfter > 0 && remainingAfter < 15) {
                         return (
                           <button
                             onClick={() => {
