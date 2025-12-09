@@ -541,7 +541,7 @@ function LifetimeAchievements({ stats }: { stats: TimeRangeStats }) {
       </div>
 
       {/* 最佳紀錄 */}
-      {bestRecords && (
+      {bestRecords && bestRecords.bestDay.minutes > 0 ? (
         <div className="bg-white rounded-2xl p-4 border border-gray-200">
           <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-orange-500" />
@@ -588,6 +588,12 @@ function LifetimeAchievements({ stats }: { stats: TimeRangeStats }) {
             </div>
           </div>
         </div>
+      ) : (
+        <div className="bg-gray-50 rounded-2xl p-6 text-center">
+          <div className="text-4xl mb-2">📈</div>
+          <p className="text-sm text-gray-600">還沒有足夠的資料</p>
+          <p className="text-xs text-gray-500 mt-1">完成更多番茄鐘後將顯示最佳紀錄</p>
+        </div>
       )}
 
       {/* 學習洞察 */}
@@ -622,6 +628,13 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
   } | null>(null);
   const [logs, setLogs] = useState<FocusLog[]>([]);
   const [plans, setPlans] = useState<StudyPlan[]>([]);
+  const [courses, setCourses] = useState<Array<{ id: string; name: string; color: string }>>([]);
+
+  // 根據課程名稱獲取顏色的輔助函數
+  const getCourseColor = (courseName: string): string => {
+    const course = courses.find(c => c.name === courseName);
+    return course?.color || 'bg-gray-400';
+  };
   const [expandedSections, setExpandedSections] = useState({
     summary: true,      // 摘要卡片區（預設展開）
     chart: true,        // 趨勢圖/成就區（預設展開）
@@ -693,6 +706,14 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
         setPlans(JSON.parse(savedPlans) as StudyPlan[]);
       } catch (error) {
         console.warn('Failed to parse studyPlans', error);
+      }
+    }
+    const savedClasses = localStorage.getItem('scheduleClasses');
+    if (savedClasses) {
+      try {
+        setCourses(JSON.parse(savedClasses));
+      } catch (error) {
+        console.warn('Failed to parse scheduleClasses', error);
       }
     }
   }, []);
@@ -779,6 +800,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
 
     const prevPomodoros = prevMonthLogs.length;
     const prevMinutes = prevMonthLogs.reduce((sum, log) => sum + log.minutes, 0);
+    const prevActiveDays = new Set(prevMonthLogs.map(log => log.date)).size;
 
     // 生成圖表資料（本月 1 號到今天）
     const todayDate = today.getDate(); // 今天是幾號
@@ -815,7 +837,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
       comparison: {
         pomodorosDelta: calculatePercentChange(prevPomodoros, totalPomodoros),
         minutesDelta: calculatePercentChange(prevMinutes, totalMinutes),
-        activeDaysDelta: 0,
+        activeDaysDelta: calculatePercentChange(prevActiveDays, activeDays),
       },
       currentStreak: calculateCurrentStreak(logs, today),
       chartData,
@@ -895,7 +917,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
     const monthlyMap: { [key: string]: FocusLog[] } = {};
     logs.forEach(log => {
       const logDate = new Date(log.date);
-      const monthKey = `${logDate.getFullYear()}-${logDate.getMonth() + 1}`;
+      const monthKey = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
       if (!monthlyMap[monthKey]) monthlyMap[monthKey] = [];
       monthlyMap[monthKey].push(log);
     });
@@ -911,9 +933,9 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
       .map(([monthKey, monthLogs]) => {
         const [year, month] = monthKey.split('-');
         return {
-          label: `${month}月`,
+          label: `${parseInt(month)}月`,
           value: monthLogs.length,
-          date: `${year}-${month.padStart(2, '0')}-01`,
+          date: `${year}-${month}-01`,
         };
       });
 
@@ -985,6 +1007,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
 
     const prevPomodoros = prevPeriodLogs.length;
     const prevMinutes = prevPeriodLogs.reduce((sum, log) => sum + log.minutes, 0);
+    const prevActiveDays = new Set(prevPeriodLogs.map(log => log.date)).size;
 
     // 生成圖表資料（根據天數決定粒度）
     let chartData: ChartDataPoint[] = [];
@@ -1033,7 +1056,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
       comparison: {
         pomodorosDelta: calculatePercentChange(prevPomodoros, totalPomodoros),
         minutesDelta: calculatePercentChange(prevMinutes, totalMinutes),
-        activeDaysDelta: 0,
+        activeDaysDelta: calculatePercentChange(prevActiveDays, activeDays),
       },
       currentStreak: calculateCurrentStreak(logs, new Date()),
       chartData,
@@ -1725,13 +1748,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
                 {planStats.sortedSubjects.map(([subject, stats], index) => {
                   const maxMinutes = planStats.sortedSubjects[0][1].minutes;
                   const widthPercent = (stats.minutes / maxMinutes) * 100;
-                  const colors = [
-                    'from-purple-400 to-purple-500',
-                    'from-blue-400 to-blue-500',
-                    'from-indigo-400 to-indigo-500',
-                    'from-pink-400 to-pink-500',
-                    'from-orange-400 to-orange-500',
-                  ];
+                  const courseColor = getCourseColor(subject);
                   return (
                     <div key={subject} className="space-y-1">
                       <div className="flex justify-between text-sm">
@@ -1740,7 +1757,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
                       </div>
                       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full bg-gradient-to-r ${colors[index]} transition-all duration-500`}
+                          className={`h-full ${courseColor} transition-all duration-500`}
                           style={{ width: `${widthPercent}%` }}
                         />
                       </div>

@@ -9,7 +9,7 @@ import { Navigation } from './components/Navigation';
 import { Insights } from './components/Insights';
 import { Settlement } from './components/Settlement';
 import { FocusHistory } from './components/FocusHistory';
-import { CourseProgress } from './components/CourseProgress';
+// CourseProgress 已移除，課程管理整合到 Schedule
 
 export type User = {
   id: string;
@@ -27,7 +27,7 @@ export type School = {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState<'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'settlement' | 'history' | 'courses'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'settlement' | 'history'>('home');
   const [settlementData, setSettlementData] = useState<{
     sessionMinutes: number;
     pointsEarned: number;
@@ -102,7 +102,6 @@ export default function App() {
             {currentPage === 'leaderboard' && <Leaderboard currentUser={currentUser} />}
             {currentPage === 'profile' && <Profile user={currentUser} onLogout={handleLogout} />}
             {currentPage === 'history' && <FocusHistory user={currentUser} onBack={() => setCurrentPage('home')} />}
-            {currentPage === 'courses' && <CourseProgress user={currentUser} onBack={() => setCurrentPage('home')} />}
           </div>
 
           <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />

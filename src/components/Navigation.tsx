@@ -9,7 +9,7 @@ export function Navigation({ currentPage, onPageChange }: NavigationProps) {
   const navItems = [
     { id: 'home' as const, icon: Home, label: '首頁' },
     { id: 'planner' as const, icon: Notebook, label: '讀書計畫' },
-    { id: 'courses' as const, icon: BookOpen, label: '課程進度' },
+    { id: 'schedule' as const, icon: BookOpen, label: '課表' },
     { id: 'insights' as const, icon: LineChart, label: '洞察' },
     { id: 'leaderboard' as const, icon: Trophy, label: '排行' },
     { id: 'profile' as const, icon: User, label: '我的' },

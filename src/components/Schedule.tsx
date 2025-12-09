@@ -16,6 +16,7 @@ type ClassItem = {
 type TodoItem = {
   id: string;
   title: string;
+  courseName?: string; // 關聯的課程名稱（來自課表）
   date: string; // YYYY-MM-DD
   todoType: 'homework' | 'exam' | 'memo';
   completed: boolean;
@@ -81,7 +82,7 @@ const DEFAULT_CLASSES: ClassItem[] = [
     endTime: '15:00',
     location: '實驗室 A',
     day: 1,
-    color: 'bg-purple-400',
+    color: 'bg-red-400',
     type: 'class'
   },
   {
@@ -91,7 +92,7 @@ const DEFAULT_CLASSES: ClassItem[] = [
     endTime: '12:00',
     location: '電腦教室 B',
     day: 3,
-    color: 'bg-yellow-400',
+    color: 'bg-purple-400',
     type: 'class'
   },
   {
@@ -121,7 +122,7 @@ export function Schedule() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addType, setAddType] = useState<'class' | 'todo'>('class');
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
-  
+
   const [newClass, setNewClass] = useState({
     name: '',
     startTime: '08:00',
@@ -132,6 +133,7 @@ export function Schedule() {
 
   const [newTodo, setNewTodo] = useState({
     title: '',
+    courseName: '',
     date: '',
     todoType: 'homework' as 'homework' | 'exam' | 'memo',
   });
@@ -143,7 +145,8 @@ export function Schedule() {
 
     if (savedClasses) {
       try {
-        setClasses(JSON.parse(savedClasses));
+        const loadedClasses = JSON.parse(savedClasses);
+        setClasses(loadedClasses);
       } catch (error) {
         console.warn('Failed to parse scheduleClasses', error);
         setClasses(DEFAULT_CLASSES);
@@ -253,7 +256,7 @@ export function Schedule() {
         type: 'todo',
       };
       setTodos([...todos, todoItem]);
-      setNewTodo({ title: '', date: '', todoType: 'homework' });
+      setNewTodo({ title: '', courseName: '', date: '', todoType: 'homework' });
       setShowAddForm(false);
     }
   };
@@ -281,15 +284,42 @@ export function Schedule() {
     const startMinute = parseInt(classItem.startTime.split(':')[1]);
     const endHour = parseInt(classItem.endTime.split(':')[0]);
     const endMinute = parseInt(classItem.endTime.split(':')[1]);
-    
+
     const startTotalMinutes = (startHour - 8) * 60 + startMinute;
     const endTotalMinutes = (endHour - 8) * 60 + endMinute;
     const duration = endTotalMinutes - startTotalMinutes;
-    
+
+    const SLOT_HEIGHT = 56; // h-14 = 56px
+
     return {
-      top: (startTotalMinutes / 60) * 64,
-      height: (duration / 60) * 64,
+      top: (startTotalMinutes / 60) * SLOT_HEIGHT,
+      height: (duration / 60) * SLOT_HEIGHT,
     };
+  };
+
+  const getDaysUntil = (dateStr: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(dateStr);
+    targetDate.setHours(0, 0, 0, 0);
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const createStudyPlanFromTodo = (todo: TodoItem) => {
+    // 創建 StudyPlan 數據並導航到 StudyPlanner 頁面
+    const planData = {
+      title: todo.title,
+      courseName: todo.courseName || '',
+      date: todo.date,
+      todoType: todo.todoType,
+    };
+    // 將數據存儲到 localStorage，供 StudyPlanner 讀取
+    localStorage.setItem('pendingStudyPlan', JSON.stringify(planData));
+    // 這裡需要一個方法來導航到 StudyPlanner 頁面
+    // 暫時使用 alert 提示（後續需要整合導航功能）
+    alert(`準備為「${todo.title}」建立學習計畫，請前往讀書計畫頁面查看`);
   };
 
   const changeWeek = (direction: 'prev' | 'next') => {
@@ -377,45 +407,46 @@ export function Schedule() {
 
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <div className="min-w-[800px]">
+              <div className="min-w-full">
                 {/* 星期標題行 */}
-                <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50">
-                  <div className="p-3 text-center text-gray-500 text-sm sticky left-0 bg-gray-50 z-10">
+                <div className="flex border-b border-gray-200 bg-gray-50">
+                  <div className="w-12 flex-shrink-0 p-2 text-center text-gray-500 text-xs sticky left-0 bg-gray-50 z-10">
                     時間
                   </div>
+                  <div className="flex-1 grid grid-cols-7">
                   {weekDates.map((date, index) => {
                     const isToday = date.toDateString() === new Date().toDateString();
                     return (
                       <div
                         key={index}
-                        className={`p-3 text-center ${isToday ? 'bg-blue-100' : ''}`}
+                        className={`p-2 text-center ${isToday ? 'bg-blue-100' : ''}`}
                       >
-                        <p className={`text-sm ${isToday ? 'text-blue-600' : 'text-gray-500'}`}>
-                          {WEEKDAYS[index]}
+                        <p className={`text-xs ${isToday ? 'text-blue-600' : 'text-gray-500'}`}>
+                          {WEEKDAYS_SHORT[index]}
                         </p>
-                        <p className={`${isToday ? 'text-blue-600' : 'text-gray-700'}`}>
+                        <p className={`text-sm font-semibold ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>
                           {date.getDate()}
                         </p>
                       </div>
                     );
                   })}
+                  </div>
                 </div>
 
                 {/* 時間軸和課程網格 */}
-                <div className="relative">
-                  <div className="absolute left-0 top-0 w-[12.5%] bg-gray-50 z-10">
+                <div className="relative flex">
+                  <div className="w-12 flex-shrink-0 bg-gray-50 z-10">
                     {TIME_SLOTS.map((time) => (
                       <div
                         key={time}
-                        className="h-16 border-b border-gray-200 flex items-center justify-center text-gray-500 text-sm"
+                        className="h-14 border-b border-gray-200 flex items-center justify-center text-gray-500 text-xs"
                       >
                         {time}
                       </div>
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-8 ml-[12.5%]">
-                    <div className="col-span-7 grid grid-cols-7 relative">
+                  <div className="flex-1 grid grid-cols-7 relative">
                       {weekDates.map((date, dayIndex) => {
                         const isToday = date.toDateString() === new Date().toDateString();
                         return (
@@ -423,7 +454,7 @@ export function Schedule() {
                             {TIME_SLOTS.map((time) => (
                               <div
                                 key={`${dayIndex}-${time}`}
-                                className={`h-16 border-b border-r border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors ${
+                                className={`h-14 border-b border-r border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors ${
                                   isToday ? 'bg-blue-50 bg-opacity-30' : ''
                                 }`}
                                 onClick={() => {
@@ -442,27 +473,30 @@ export function Schedule() {
                                 return (
                                   <div
                                     key={classItem.id}
-                                    className={`absolute left-1 right-1 ${classItem.color} text-white rounded-lg p-2 shadow-md hover:shadow-lg cursor-pointer transition-all overflow-hidden z-20`}
+                                    className={`absolute left-0.5 right-0.5 ${classItem.color} text-white rounded p-1 shadow-sm hover:shadow-md cursor-pointer transition-all overflow-hidden z-20`}
                                     style={{
                                       top: `${position.top}px`,
                                       height: `${position.height}px`,
                                     }}
                                     onClick={() => setSelectedItem(classItem)}
                                   >
-                                    <p className="text-sm truncate">{classItem.name}</p>
-                                    <p className="text-xs text-white text-opacity-90 truncate">
-                                      {classItem.startTime}-{classItem.endTime}
-                                    </p>
-                                    <p className="text-xs text-white text-opacity-80 truncate">
-                                      {classItem.location}
-                                    </p>
+                                    <p className="font-semibold text-[10px] leading-tight truncate">{classItem.name}</p>
+                                    {position.height > 40 && (
+                                      <>
+                                        <p className="text-[9px] opacity-90 truncate">
+                                          {classItem.startTime}-{classItem.endTime}
+                                        </p>
+                                        <p className="text-[9px] opacity-80 truncate">
+                                          {classItem.location}
+                                        </p>
+                                      </>
+                                    )}
                                   </div>
                                 );
                               })}
                           </div>
                         );
                       })}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -481,32 +515,58 @@ export function Schedule() {
                     return todoDate >= weekDates[0] && todoDate <= weekDates[6];
                   })
                   .sort((a, b) => a.date.localeCompare(b.date))
-                  .map((todo) => (
-                    <div
-                      key={todo.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer"
-                      onClick={() => setSelectedItem(todo)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={() => toggleTodo(todo.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-5 h-5 rounded accent-blue-500"
-                      />
-                      <div className="flex-1">
-                        <p className={`text-gray-800 ${todo.completed ? 'line-through opacity-50' : ''}`}>
-                          {todo.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`${TODO_COLORS[todo.todoType]} text-white px-2 py-0.5 rounded text-xs`}>
-                            {TODO_LABELS[todo.todoType]}
-                          </span>
-                          <span className="text-xs text-gray-500">{todo.date}</span>
+                  .map((todo) => {
+                    const daysUntil = getDaysUntil(todo.date);
+                    const isUrgent = daysUntil >= 0 && daysUntil <= 3;
+                    return (
+                      <div
+                        key={todo.id}
+                        className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={todo.completed}
+                          onChange={() => toggleTodo(todo.id)}
+                          className="w-5 h-5 rounded accent-blue-500 mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <p className={`text-gray-800 ${todo.completed ? 'line-through opacity-50' : ''}`}>
+                            {todo.title}
+                          </p>
+                          <div className="flex items-center flex-wrap gap-2 mt-1">
+                            <span className={`${TODO_COLORS[todo.todoType]} text-white px-2 py-0.5 rounded text-xs`}>
+                              {TODO_LABELS[todo.todoType]}
+                            </span>
+                            <span className="text-xs text-gray-500">{todo.date}</span>
+                            {!todo.completed && (
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                daysUntil < 0 ? 'bg-red-100 text-red-600' :
+                                isUrgent ? 'bg-orange-100 text-orange-600' :
+                                'bg-blue-100 text-blue-600'
+                              }`}>
+                                {daysUntil < 0 ? `已逾期 ${Math.abs(daysUntil)} 天` :
+                                 daysUntil === 0 ? '今天' :
+                                 daysUntil === 1 ? '明天' :
+                                 `還有 ${daysUntil} 天`}
+                              </span>
+                            )}
+                          </div>
+                          {!todo.completed && (todo.todoType === 'homework' || todo.todoType === 'exam') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                createStudyPlanFromTodo(todo);
+                              }}
+                              className="mt-2 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                            >
+                              <Calendar className="w-3 h-3" />
+                              建立學習計畫
+                            </button>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 {todos.filter((t) => {
                   const todoDate = new Date(t.date);
                   return todoDate >= weekDates[0] && todoDate <= weekDates[6];
@@ -752,13 +812,13 @@ export function Schedule() {
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-2">星期</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {WEEKDAYS.map((day, index) => (
+                  <div className="grid grid-cols-7 gap-1">
+                    {WEEKDAYS_SHORT.map((day, index) => (
                       <button
                         key={day}
                         onClick={() => setNewClass({ ...newClass, day: index })}
-                        className={`py-2 rounded-xl transition-all ${
-                          newClass.day === index ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
+                        className={`py-2 rounded-xl text-sm transition-all ${
+                          newClass.day === index ? 'bg-blue-500 text-white font-semibold' : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         {day}
@@ -879,6 +939,53 @@ export function Schedule() {
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:outline-none"
                     placeholder="例如：微積分作業"
                   />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-2">關聯課程（選填）</label>
+                  <Select.Root
+                    value={newTodo.courseName || "__none__"}
+                    onValueChange={(value) => setNewTodo({ ...newTodo, courseName: value === "__none__" ? "" : value })}
+                  >
+                    <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:outline-none bg-white">
+                      <Select.Value placeholder="選擇課表上的課程" />
+                      <Select.Icon>
+                        <ChevronDown className="w-4 h-4" />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60">
+                        <Select.Viewport className="p-1">
+                          <Select.Item
+                            value="__none__"
+                            className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-500 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 outline-none"
+                          >
+                            <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                              <Check className="w-4 h-4 text-green-600" />
+                            </Select.ItemIndicator>
+                            <Select.ItemText>不關聯課程</Select.ItemText>
+                          </Select.Item>
+                          {classes.map((classItem) => (
+                            <Select.Item
+                              key={classItem.id}
+                              value={classItem.name}
+                              className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-green-50 focus:bg-green-50 outline-none"
+                            >
+                              <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                                <Check className="w-4 h-4 text-green-600" />
+                              </Select.ItemIndicator>
+                              <Select.ItemText>
+                                <span className="flex items-center gap-2">
+                                  <span className={`w-3 h-3 rounded-full ${classItem.color}`}></span>
+                                  {classItem.name}
+                                </span>
+                              </Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Viewport>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                  <p className="text-xs text-gray-500 mt-1">從課表選擇相關課程</p>
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-2">日期</label>

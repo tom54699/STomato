@@ -6,7 +6,7 @@ import * as Select from '@radix-ui/react-select';
 type StudyPlan = {
   id: string;
   title: string;
-  subject?: string; // 科目分類（選填）- NEW
+  courseName?: string; // 課程名稱（來自課表，選填）
   date: string; // YYYY-MM-DD
   startTime: string;
   endTime: string;
@@ -18,6 +18,13 @@ type StudyPlan = {
   targetMinutes?: number; // 計畫總時長（分鐘）- 用於累積追蹤
   completedMinutes?: number; // 已完成時長（分鐘）
   pomodoroCount?: number; // 完成的番茄鐘數量
+};
+
+// 從課表獲取課程列表
+type ClassItem = {
+  id: string;
+  name: string;
+  color: string;
 };
 
 type StudyPlannerProps = {
@@ -129,9 +136,10 @@ function findNextAvailableTime(
 export function StudyPlanner({ user }: StudyPlannerProps) {
   const today = formatDate(new Date());
   const [plans, setPlans] = useState<StudyPlan[]>([]);
+  const [courses, setCourses] = useState<ClassItem[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
-  const [form, setForm] = useState({ title: '', subject: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
+  const [form, setForm] = useState({ title: '', courseName: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
   const [reminderToast, setReminderToast] = useState('');
   const [titleError, setTitleError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -142,12 +150,43 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   }>({ show: false, planId: '', planTitle: '', hasData: false });
 
   useEffect(() => {
+    // 載入課表課程
+    const savedClasses = localStorage.getItem('scheduleClasses');
+    if (savedClasses) {
+      try {
+        const loadedClasses = JSON.parse(savedClasses);
+        setCourses(loadedClasses);
+      } catch (error) {
+        console.warn('Failed to parse scheduleClasses', error);
+      }
+    }
+
+    // 載入學習計畫
     const saved = localStorage.getItem('studyPlans');
     if (saved) {
       try {
         setPlans(JSON.parse(saved) as StudyPlan[]);
       } catch (error) {
         console.warn('Failed to parse study plans', error);
+      }
+    }
+
+    // 檢查是否有待建立的學習計畫（從課表「建立學習計畫」按鈕過來）
+    const pendingPlan = localStorage.getItem('pendingStudyPlan');
+    if (pendingPlan) {
+      try {
+        const planData = JSON.parse(pendingPlan);
+        // 自動填入表單
+        setForm(prev => ({
+          ...prev,
+          title: planData.title || '',
+          courseName: planData.courseName || '',
+          date: planData.date || prev.date,
+        }));
+        // 清除暫存
+        localStorage.removeItem('pendingStudyPlan');
+      } catch (error) {
+        console.warn('Failed to parse pendingStudyPlan', error);
       }
     }
   }, []);
@@ -263,16 +302,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     return !checkTimeConflict(form.start, form.duration, form.date);
   }, [plans, form.date, form.start, form.duration]);
 
-  // 提取歷史科目（用於 datalist 自動建議）
-  const historicalSubjects = useMemo(() => {
-    const subjects = new Set<string>();
-    plans.forEach(plan => {
-      if (plan.subject && plan.subject.trim()) {
-        subjects.add(plan.subject.trim());
-      }
-    });
-    return Array.from(subjects).sort();
-  }, [plans]);
+  // 移除歷史科目功能（已改用課表課程）
 
   // 提取歷史地點（用於 datalist 自動建議）
   const historicalLocations = useMemo(() => {
@@ -317,7 +347,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     const newPlan: StudyPlan = {
       id: `plan-${Date.now()}`,
       title: form.title.trim(),
-      subject: form.subject.trim() || undefined, // 科目（選填）
+      courseName: form.courseName || undefined, // 課程名稱（選填）
       date: form.date,
       startTime: form.start,
       endTime: endTime,
@@ -354,7 +384,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     const nextStartTime = nextAvailableTime || '19:00';
     setForm({
       title: '',
-      subject: '',
+      courseName: '',
       date: form.date,
       start: nextStartTime,
       duration: 90,
@@ -472,19 +502,50 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
             )}
           </div>
           <div>
-            <input
-              list="subject-suggestions"
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3"
-              placeholder="科目（選填，例如微積分、英文）"
-              value={form.subject}
-              onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
-            />
-            <datalist id="subject-suggestions">
-              {historicalSubjects.map((subject) => (
-                <option key={subject} value={subject} />
-              ))}
-            </datalist>
-            <p className="text-xs text-gray-500 mt-1">💡 填寫科目可獲得更精準的學習分析</p>
+            <Select.Root
+              value={form.courseName || "__none__"}
+              onValueChange={(value) => setForm((prev) => ({ ...prev, courseName: value === "__none__" ? "" : value }))}
+            >
+              <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white">
+                <Select.Value placeholder="關聯課程（選填）" />
+                <Select.Icon>
+                  <ChevronDown className="w-4 h-4" />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60">
+                  <Select.Viewport className="p-1">
+                    <Select.Item
+                      value="__none__"
+                      className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-500 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 outline-none"
+                    >
+                      <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                        <Check className="w-4 h-4 text-blue-600" />
+                      </Select.ItemIndicator>
+                      <Select.ItemText>不關聯課程</Select.ItemText>
+                    </Select.Item>
+                    {courses.map((course) => (
+                      <Select.Item
+                        key={course.id}
+                        value={course.name}
+                        className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none"
+                      >
+                        <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                          <Check className="w-4 h-4 text-blue-600" />
+                        </Select.ItemIndicator>
+                        <Select.ItemText>
+                          <span className="flex items-center gap-2">
+                            <span className={`w-3 h-3 rounded-full ${course.color}`}></span>
+                            {course.name}
+                          </span>
+                        </Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
+            <p className="text-xs text-gray-500 mt-1">從課表選擇相關課程</p>
           </div>
           <div>
             <input
@@ -719,9 +780,9 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                         <h4 className={`font-semibold text-base ${plan.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                           {plan.title}
                         </h4>
-                        {plan.subject && (
+                        {plan.courseName && (
                           <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-medium flex-shrink-0">
-                            {plan.subject}
+                            {plan.courseName}
                           </span>
                         )}
                       </div>
@@ -759,7 +820,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                         setForm((prev) => ({
                           ...prev,
                           title: plan.title,
-                          subject: plan.subject || '',
+                          courseName: plan.courseName || '',
                           date: plan.date,
                           start: plan.startTime,
                           duration: duration,

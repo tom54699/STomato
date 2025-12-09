@@ -16,7 +16,7 @@ type HomeProps = {
 type StudyPlan = {
   id: string;
   title: string;
-  subject?: string; // 科目分類（選填）
+  courseName?: string; // 課程名稱（來自課表，選填）
   date: string;
   startTime: string;
   endTime: string;
@@ -139,7 +139,7 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
       timestamp: Date.now(),
       planId: linkedPlan?.id,
       planTitle: linkedPlan?.title,
-      subject: linkedPlan?.subject, // 科目分類
+      subject: linkedPlan?.courseName, // 課程名稱（從計畫取得）
       location: linkedPlan?.location || customLocation || undefined,
     };
     recordFocusLog(log);
@@ -654,9 +654,9 @@ const toggleTimer = () => {
                         <span className="text-sm text-gray-500">
                           {plan.startTime} - {plan.endTime}
                         </span>
-                        {plan.subject && (
+                        {plan.courseName && (
                           <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded font-medium">
-                            {plan.subject}
+                            {plan.courseName}
                           </span>
                         )}
                       </div>
