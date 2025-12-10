@@ -9,6 +9,8 @@ type FocusLog = {
   timestamp: number;
   planId?: string;
   planTitle?: string;
+  courseId?: string;
+  courseName?: string;
   location?: string;
 };
 
@@ -25,9 +27,33 @@ export function FocusHistory({ user, onBack }: FocusHistoryProps) {
     const savedLogs = localStorage.getItem('focusLogs');
     if (savedLogs) {
       try {
-        setLogs(JSON.parse(savedLogs) as FocusLog[]);
+        const parsed = JSON.parse(savedLogs) as any[];
+        const migrated = parsed.map(log => ({
+          ...log,
+          courseName: log.courseName || log.subject || log.planTitle,
+        }));
+        setLogs(migrated as FocusLog[]);
+        localStorage.setItem('focusLogs', JSON.stringify(migrated));
       } catch (error) {
         console.warn('Failed to parse focusLogs', error);
+      }
+    }
+
+    // 若有課程更名，更新歷史紀錄顯示
+    const pendingCourseUpdate = localStorage.getItem('pendingCourseUpdate');
+    if (pendingCourseUpdate) {
+      try {
+        const { id, name } = JSON.parse(pendingCourseUpdate);
+        const updatedLogs = (logs.length ? logs : JSON.parse(localStorage.getItem('focusLogs') || '[]')).map((log: any) => {
+          if (log.courseId === id) return { ...log, courseName: name };
+          return log;
+        });
+        setLogs(updatedLogs as FocusLog[]);
+        localStorage.setItem('focusLogs', JSON.stringify(updatedLogs));
+      } catch (error) {
+        console.warn('Failed to apply pendingCourseUpdate to history', error);
+      } finally {
+        localStorage.removeItem('pendingCourseUpdate');
       }
     }
   }, []);

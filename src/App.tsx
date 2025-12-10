@@ -44,6 +44,23 @@ export default function App() {
     }
   }, []);
 
+  // 若課表/待辦要求建立學習計畫，登入後自動導向讀書計畫頁
+  useEffect(() => {
+    if (!currentUser) return;
+    const navigateToPlanner = localStorage.getItem('navigateToPlanner');
+    if (navigateToPlanner) {
+      localStorage.removeItem('navigateToPlanner');
+      setCurrentPage('planner');
+    }
+  }, [currentUser]);
+
+  // 監聽自訂事件，讓 Schedule 可直接觸發導向
+  useEffect(() => {
+    const handler = () => setCurrentPage('planner');
+    window.addEventListener('navigateToPlanner', handler);
+    return () => window.removeEventListener('navigateToPlanner', handler);
+  }, []);
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     localStorage.setItem('currentUser', JSON.stringify(user));

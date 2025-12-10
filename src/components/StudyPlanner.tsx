@@ -6,6 +6,7 @@ import * as Select from '@radix-ui/react-select';
 type StudyPlan = {
   id: string;
   title: string;
+  courseId?: string; // 課程 ID
   courseName?: string; // 課程名稱（來自課表，選填）
   date: string; // YYYY-MM-DD
   startTime: string;
@@ -56,6 +57,13 @@ function minutesToTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// JS getDay 0=Sunday; convert to 0=Monday index used by課表
+function weekdayIndexFromDate(dateStr: string): number {
+  const date = new Date(dateStr);
+  const jsDay = date.getDay(); // 0-6
+  return (jsDay + 6) % 7;
 }
 
 // 計算結束時間
@@ -139,7 +147,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
   const [courses, setCourses] = useState<ClassItem[]>([]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
-  const [form, setForm] = useState({ title: '', courseName: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
+  const [form, setForm] = useState({ title: '', courseId: '', courseName: '', date: today, start: '19:00', duration: 90, reminder: '19:50', location: '' });
   const [reminderToast, setReminderToast] = useState('');
   const [titleError, setTitleError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -165,9 +173,39 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     const saved = localStorage.getItem('studyPlans');
     if (saved) {
       try {
-        setPlans(JSON.parse(saved) as StudyPlan[]);
+        const parsed = JSON.parse(saved) as any[];
+        const migrated = parsed.map(plan => ({
+          ...plan,
+          courseName: plan.courseName || plan.subject,
+        }));
+        setPlans(migrated as StudyPlan[]);
+        localStorage.setItem('studyPlans', JSON.stringify(migrated));
       } catch (error) {
         console.warn('Failed to parse study plans', error);
+      }
+    }
+
+    // 若有課程更名需同步，更新計畫/紀錄
+    const pendingCourseUpdate = localStorage.getItem('pendingCourseUpdate');
+    if (pendingCourseUpdate) {
+      try {
+        const { id, name } = JSON.parse(pendingCourseUpdate);
+        let updated = false;
+        const nextPlans = (plans.length ? plans : JSON.parse(localStorage.getItem('studyPlans') || '[]')).map((plan: any) => {
+          if (plan.courseId === id) {
+            updated = true;
+            return { ...plan, courseName: name };
+          }
+          return plan;
+        });
+        if (updated) {
+          setPlans(nextPlans);
+          localStorage.setItem('studyPlans', JSON.stringify(nextPlans));
+        }
+      } catch (error) {
+        console.warn('Failed to apply pendingCourseUpdate', error);
+      } finally {
+        localStorage.removeItem('pendingCourseUpdate');
       }
     }
 
@@ -180,9 +218,14 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
         setForm(prev => ({
           ...prev,
           title: planData.title || '',
+          courseId: planData.courseId || '',
           courseName: planData.courseName || '',
           date: planData.date || prev.date,
         }));
+        if (planData.date) {
+          setSelectedDate(planData.date);
+          setWeekStart(getWeekStart(new Date(planData.date)));
+        }
         // 清除暫存
         localStorage.removeItem('pendingStudyPlan');
       } catch (error) {
@@ -302,6 +345,51 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     return !checkTimeConflict(form.start, form.duration, form.date);
   }, [plans, form.date, form.start, form.duration]);
 
+  // 檢查所選時間是否與課表衝突
+  const hasClassConflict = useMemo(() => {
+    if (!form.start) return false;
+    const dayIndex = weekdayIndexFromDate(form.date);
+    const todaysClasses = courses.filter((cls) => cls.day === dayIndex);
+    if (todaysClasses.length === 0) return false;
+    const planStart = timeToMinutes(form.start);
+    const planEnd = planStart + form.duration;
+    return todaysClasses.some((cls) => {
+      const classStart = timeToMinutes(cls.startTime);
+      const classEnd = timeToMinutes(cls.endTime);
+      return planStart < classEnd && planEnd > classStart;
+    });
+  }, [courses, form.date, form.start, form.duration]);
+
+  const isSlotFree = (date: string, startTime: string, duration: number): boolean => {
+    // 計畫衝突
+    if (checkTimeConflict(startTime, duration, date)) return false;
+    // 課表衝突
+    const dayIndex = weekdayIndexFromDate(date);
+    const todaysClasses = courses.filter((cls) => cls.day === dayIndex);
+    if (todaysClasses.length > 0) {
+      const planStart = timeToMinutes(startTime);
+      const planEnd = planStart + duration;
+      const conflict = todaysClasses.some((cls) => {
+        const classStart = timeToMinutes(cls.startTime);
+        const classEnd = timeToMinutes(cls.endTime);
+        return planStart < classEnd && planEnd > classStart;
+      });
+      if (conflict) return false;
+    }
+    return true;
+  };
+
+  const suggestNextAvailableTime = (): string | null => {
+    const startMinutes = form.start ? timeToMinutes(form.start) : 6 * 60;
+    for (let m = startMinutes + 15; m <= 22 * 60; m += 15) {
+      const candidate = minutesToTime(m);
+      if (isSlotFree(form.date, candidate, form.duration)) {
+        return candidate;
+      }
+    }
+    return null;
+  };
+
   // 移除歷史科目功能（已改用課表課程）
 
   // 提取歷史地點（用於 datalist 自動建議）
@@ -347,6 +435,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     const newPlan: StudyPlan = {
       id: `plan-${Date.now()}`,
       title: form.title.trim(),
+      courseId: form.courseId || undefined,
       courseName: form.courseName || undefined, // 課程名稱（選填）
       date: form.date,
       startTime: form.start,
@@ -384,6 +473,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
     const nextStartTime = nextAvailableTime || '19:00';
     setForm({
       title: '',
+      courseId: '',
       courseName: '',
       date: form.date,
       start: nextStartTime,
@@ -503,8 +593,19 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
           </div>
           <div>
             <Select.Root
-              value={form.courseName || "__none__"}
-              onValueChange={(value) => setForm((prev) => ({ ...prev, courseName: value === "__none__" ? "" : value }))}
+              value={form.courseId || "__none__"}
+              onValueChange={(value) => {
+                if (value === "__none__") {
+                  setForm((prev) => ({ ...prev, courseId: '', courseName: '' }));
+                  return;
+                }
+                const course = courses.find((c) => c.id === value);
+                setForm((prev) => ({
+                  ...prev,
+                  courseId: value,
+                  courseName: course?.name || '',
+                }));
+              }}
             >
               <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white">
                 <Select.Value placeholder="關聯課程（選填）" />
@@ -522,12 +623,12 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                       <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
                         <Check className="w-4 h-4 text-blue-600" />
                       </Select.ItemIndicator>
-                      <Select.ItemText>不關聯課程</Select.ItemText>
+                      <Select.ItemText>不選課程（獨立任務）</Select.ItemText>
                     </Select.Item>
                     {courses.map((course) => (
                       <Select.Item
                         key={course.id}
-                        value={course.name}
+                        value={course.id}
                         className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none"
                       >
                         <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
@@ -721,13 +822,32 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
 
           {/* 時間衝突檢查提示 */}
           {form.start && form.duration && !isTimeAvailable && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-sm space-y-2">
               <div className="text-red-700 font-semibold">
-                ⚠️ 此時段與現有計畫衝突！
+                ⚠️ 此時段有衝突
               </div>
-              <p className="text-red-600 text-xs mt-1">
-                請選擇其他可用時段
+              <p className="text-red-600 text-xs">
+                與其他學習計畫重疊
               </p>
+              {(() => {
+                const suggestion = suggestNextAvailableTime();
+                if (!suggestion) return null;
+                return (
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-600 font-semibold underline"
+                    onClick={() => {
+                      setForm((prev) => ({
+                        ...prev,
+                        start: suggestion,
+                        reminder: suggestReminderTime(suggestion),
+                      }));
+                    }}
+                  >
+                    一鍵改到可用時段 {suggestion}
+                  </button>
+                );
+              })()}
             </div>
           )}
 
@@ -820,6 +940,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                         setForm((prev) => ({
                           ...prev,
                           title: plan.title,
+                          courseId: plan.courseId || '',
                           courseName: plan.courseName || '',
                           date: plan.date,
                           start: plan.startTime,
@@ -828,6 +949,7 @@ export function StudyPlanner({ user }: StudyPlannerProps) {
                           location: plan.location || ''
                         }));
                         setSelectedDate(plan.date);
+                        setWeekStart(getWeekStart(new Date(plan.date)));
                       }}
                     >
                       編輯

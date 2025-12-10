@@ -1,8 +1,8 @@
 import { Home, Notebook, BookOpen, Trophy, User, LineChart } from 'lucide-react';
 
 type NavigationProps = {
-  currentPage: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'courses';
-  onPageChange: (page: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'courses') => void;
+  currentPage: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'history';
+  onPageChange: (page: 'home' | 'planner' | 'schedule' | 'insights' | 'leaderboard' | 'profile' | 'history') => void;
 };
 
 export function Navigation({ currentPage, onPageChange }: NavigationProps) {

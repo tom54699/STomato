@@ -16,6 +16,7 @@ type ClassItem = {
 type TodoItem = {
   id: string;
   title: string;
+  courseId?: string; // 關聯課程 ID
   courseName?: string; // 關聯的課程名稱（來自課表）
   date: string; // YYYY-MM-DD
   todoType: 'homework' | 'exam' | 'memo';
@@ -33,13 +34,17 @@ const TIME_SLOTS = [
 ];
 const COLORS = [
   'bg-red-400',
-  'bg-blue-400', 
-  'bg-green-400',
+  'bg-orange-400',
+  'bg-amber-400',
   'bg-yellow-400',
+  'bg-lime-400',
+  'bg-green-400',
+  'bg-teal-400',
+  'bg-cyan-400',
+  'bg-blue-400', 
+  'bg-indigo-400',
   'bg-purple-400',
   'bg-pink-400',
-  'bg-indigo-400',
-  'bg-teal-400',
 ];
 
 const TODO_COLORS = {
@@ -108,9 +113,9 @@ const DEFAULT_CLASSES: ClassItem[] = [
 ];
 
 const DEFAULT_TODOS: TodoItem[] = [
-  { id: 't1', title: '微積分習題 3-5', date: '2025-11-30', todoType: 'homework', completed: false, type: 'todo' },
-  { id: 't2', title: '物理期中考', date: '2025-12-05', todoType: 'exam', completed: false, type: 'todo' },
-  { id: 't3', title: '準備專題報告', date: '2025-12-01', todoType: 'memo', completed: false, type: 'todo' },
+  { id: 't1', title: '微積分習題 3-5', date: '2025-11-30', todoType: 'homework', completed: false, type: 'todo', courseName: '微積分', courseId: '1' },
+  { id: 't2', title: '物理期中考', date: '2025-12-05', todoType: 'exam', completed: false, type: 'todo', courseName: '物理', courseId: '3' },
+  { id: 't3', title: '準備專題報告', date: '2025-12-01', todoType: 'memo', completed: false, type: 'todo', courseName: '程式設計', courseId: '4' },
 ];
 
 export function Schedule() {
@@ -122,6 +127,7 @@ export function Schedule() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addType, setAddType] = useState<'class' | 'todo'>('class');
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
+  const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
 
   const [newClass, setNewClass] = useState({
     name: '',
@@ -129,10 +135,12 @@ export function Schedule() {
     endTime: '10:00',
     location: '',
     day: 0,
+    color: COLORS[0],
   });
 
   const [newTodo, setNewTodo] = useState({
     title: '',
+    courseId: '',
     courseName: '',
     date: '',
     todoType: 'homework' as 'homework' | 'exam' | 'memo',
@@ -152,7 +160,7 @@ export function Schedule() {
         setClasses(DEFAULT_CLASSES);
       }
     } else {
-      setClasses(DEFAULT_CLASSES);
+      setClasses([]);
     }
 
     if (savedTodos) {
@@ -163,7 +171,7 @@ export function Schedule() {
         setTodos(DEFAULT_TODOS);
       }
     } else {
-      setTodos(DEFAULT_TODOS);
+      setTodos([]);
     }
   }, []);
 
@@ -233,32 +241,59 @@ export function Schedule() {
   };
 
   const handleAddClass = () => {
-    if (newClass.name && newClass.location) {
-      const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-      const classItem: ClassItem = {
-        id: Date.now().toString(),
-        ...newClass,
-        color: randomColor,
-        type: 'class',
-      };
-      setClasses([...classes, classItem]);
-      setNewClass({ name: '', startTime: '08:00', endTime: '10:00', location: '', day: 0 });
-      setShowAddForm(false);
+    if (!newClass.name || !newClass.location) return;
+    if (newClass.startTime >= newClass.endTime) {
+      alert('結束時間必須晚於開始時間');
+      return;
     }
+    if (classes.some(cls => cls.name === newClass.name)) {
+      alert('已有同名課程，請更換名稱或直接編輯既有課程');
+      return;
+    }
+    const tempClass: ClassItem = {
+      id: 'temp',
+      name: newClass.name,
+      startTime: newClass.startTime,
+      endTime: newClass.endTime,
+      location: newClass.location,
+      day: newClass.day,
+      color: '',
+      type: 'class',
+    };
+    if (isClassConflict(tempClass)) {
+      alert('同一天已有重疊時段的課程，請調整時間');
+      return;
+    }
+    const classItem: ClassItem = {
+      id: Date.now().toString(),
+      ...newClass,
+      color: newClass.color,
+      type: 'class',
+    };
+    setClasses([...classes, classItem]);
+    setNewClass({ name: '', startTime: '08:00', endTime: '10:00', location: '', day: 0, color: newClass.color });
+    setShowAddForm(false);
   };
 
   const handleAddTodo = () => {
-    if (newTodo.title && newTodo.date) {
-      const todoItem: TodoItem = {
-        id: Date.now().toString(),
-        ...newTodo,
-        completed: false,
-        type: 'todo',
-      };
-      setTodos([...todos, todoItem]);
-      setNewTodo({ title: '', courseName: '', date: '', todoType: 'homework' });
-      setShowAddForm(false);
+    if (!newTodo.title || !newTodo.date) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(newTodo.date);
+    targetDate.setHours(0, 0, 0, 0);
+    if (targetDate.getTime() < today.getTime()) {
+      alert('待辦日期不可早於今天');
+      return;
     }
+    const todoItem: TodoItem = {
+      id: Date.now().toString(),
+      ...newTodo,
+      completed: false,
+      type: 'todo',
+    };
+    setTodos([...todos, todoItem]);
+    setNewTodo({ title: '', courseId: '', courseName: '', date: '', todoType: 'homework' });
+    setShowAddForm(false);
   };
 
   const handleDelete = (item: CalendarItem) => {
@@ -268,6 +303,7 @@ export function Schedule() {
       setTodos(todos.filter((t) => t.id !== item.id));
     }
     setSelectedItem(null);
+    setEditingClass(null);
   };
 
   const toggleTodo = (id: string) => {
@@ -311,21 +347,119 @@ export function Schedule() {
     // 創建 StudyPlan 數據並導航到 StudyPlanner 頁面
     const planData = {
       title: todo.title,
+      courseId: todo.courseId || '',
       courseName: todo.courseName || '',
       date: todo.date,
       todoType: todo.todoType,
     };
     // 將數據存儲到 localStorage，供 StudyPlanner 讀取
     localStorage.setItem('pendingStudyPlan', JSON.stringify(planData));
-    // 這裡需要一個方法來導航到 StudyPlanner 頁面
-    // 暫時使用 alert 提示（後續需要整合導航功能）
-    alert(`準備為「${todo.title}」建立學習計畫，請前往讀書計畫頁面查看`);
+    localStorage.setItem('navigateToPlanner', '1');
+    window.dispatchEvent(new Event('navigateToPlanner'));
   };
 
   const changeWeek = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
     setCurrentDate(newDate);
+  };
+
+  const updateClassColor = (classId: string, color: string) => {
+    setClasses((prev) => {
+      const next = prev.map((cls) =>
+        cls.id === classId ? { ...cls, color } : cls
+      );
+      localStorage.setItem('scheduleClasses', JSON.stringify(next));
+      const updatedClass = next.find(c => c.id === classId);
+      if (updatedClass) propagateCourseEdit(updatedClass);
+      // 同步更新 selectedItem
+      if (selectedItem && selectedItem.type === 'class' && selectedItem.id === classId) {
+        setSelectedItem({ ...selectedItem, color });
+      }
+      return next;
+    });
+  };
+
+  const closeModal = () => {
+    setSelectedItem(null);
+    setEditingClass(null);
+  };
+
+  const propagateCourseEdit = (updated: ClassItem) => {
+    // 更新待辦的 courseName/courseId
+    setTodos((prev) => {
+      const next = prev.map((t) =>
+        t.courseId === updated.id ? { ...t, courseName: updated.name } : t
+      );
+      localStorage.setItem('scheduleTodos', JSON.stringify(next));
+      return next;
+    });
+    // 標記需同步到計畫/洞察的暫存
+    const pending = {
+      id: updated.id,
+      name: updated.name,
+    };
+    localStorage.setItem('pendingCourseUpdate', JSON.stringify(pending));
+  };
+
+  // 工具：時間字串轉分鐘
+  const timeToMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const isClassConflict = (candidate: ClassItem, excludeId?: string) => {
+    return classes.some((cls) => {
+      if (excludeId && cls.id === excludeId) return false;
+      if (cls.day !== candidate.day) return false;
+      const start = timeToMinutes(candidate.startTime);
+      const end = timeToMinutes(candidate.endTime);
+      const cStart = timeToMinutes(cls.startTime);
+      const cEnd = timeToMinutes(cls.endTime);
+      return start < cEnd && end > cStart;
+    });
+  };
+
+  const loadSampleData = () => {
+    setClasses(DEFAULT_CLASSES);
+    setTodos(DEFAULT_TODOS);
+    localStorage.setItem('scheduleClasses', JSON.stringify(DEFAULT_CLASSES));
+    localStorage.setItem('scheduleTodos', JSON.stringify(DEFAULT_TODOS));
+  };
+
+  const clearScheduleData = () => {
+    setClasses([]);
+    setTodos([]);
+    localStorage.removeItem('scheduleClasses');
+    localStorage.removeItem('scheduleTodos');
+  };
+
+  const saveEditingClass = () => {
+    if (!editingClass) return;
+    if (!editingClass.name || !editingClass.location) {
+      alert('請填寫課程名稱與地點');
+      return;
+    }
+    if (editingClass.startTime >= editingClass.endTime) {
+      alert('結束時間必須晚於開始時間');
+      return;
+    }
+    if (isClassConflict(editingClass, editingClass.id)) {
+      alert('與其他課程時段重疊，請調整時間');
+      return;
+    }
+    if (classes.some(cls => cls.id !== editingClass.id && cls.name === editingClass.name)) {
+      alert('已有同名課程，請更換名稱');
+      return;
+    }
+    setClasses((prev) => {
+      const next = prev.map((cls) => (cls.id === editingClass.id ? editingClass : cls));
+      localStorage.setItem('scheduleClasses', JSON.stringify(next));
+      propagateCourseEdit(editingClass);
+      return next;
+    });
+    setSelectedItem(editingClass);
+    setEditingClass(null);
   };
 
   const changeMonth = (direction: 'prev' | 'next') => {
@@ -356,28 +490,50 @@ export function Schedule() {
         </div>
 
         {/* 視圖切換 */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setView('week')}
-            className={`flex-1 py-2 rounded-xl transition-all ${
-              view === 'week'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            週視圖
-          </button>
-          <button
-            onClick={() => setView('month')}
-            className={`flex-1 py-2 rounded-xl transition-all ${
-              view === 'month'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            月視圖
-          </button>
+        <div className="flex gap-2 items-center">
+          <div className="flex-1 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setView('week')}
+              className={`py-2 rounded-xl transition-all ${
+                view === 'week'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              週視圖
+            </button>
+            <button
+              onClick={() => setView('month')}
+              className={`py-2 rounded-xl transition-all ${
+                view === 'month'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              月視圖
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={loadSampleData}
+              className="px-3 py-2 rounded-lg text-xs bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100"
+            >
+              載入示例
+            </button>
+            <button
+              onClick={clearScheduleData}
+              className="px-3 py-2 rounded-lg text-xs bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"
+            >
+              清空
+            </button>
+          </div>
         </div>
+
+        {(classes.length === 0 && todos.length === 0) && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-700">
+            尚未建立課程或待辦，可使用上方「載入示例」快速體驗。
+          </div>
+        )}
       </div>
 
       {/* 週視圖 */}
@@ -478,7 +634,9 @@ export function Schedule() {
                                       top: `${position.top}px`,
                                       height: `${position.height}px`,
                                     }}
-                                    onClick={() => setSelectedItem(classItem)}
+                                    onClick={() => {
+                                      setSelectedItem(classItem);
+                                    }}
                                   >
                                     <p className="font-semibold text-[10px] leading-tight truncate">{classItem.name}</p>
                                     {position.height > 40 && (
@@ -548,6 +706,12 @@ export function Schedule() {
                                  daysUntil === 0 ? '今天' :
                                  daysUntil === 1 ? '明天' :
                                  `還有 ${daysUntil} 天`}
+                              </span>
+                            )}
+                            {todo.courseName && (
+                              <span className="text-xs text-gray-600 flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" />
+                                {todo.courseName}
                               </span>
                             )}
                           </div>
@@ -641,12 +805,15 @@ export function Schedule() {
                       {date.getDate()}
                     </div>
 
-                    {/* 課程小點 */}
+                    {/* 課程小點與計數 */}
                     {isCurrentMonth && dayClasses.length > 0 && (
-                      <div className="flex gap-1 mb-1">
+                      <div className="flex items-center gap-1 mb-1 flex-wrap">
                         {dayClasses.slice(0, 3).map((c) => (
                           <div key={c.id} className={`w-2 h-2 rounded-full ${c.color}`} />
                         ))}
+                        {dayClasses.length > 3 && (
+                          <span className="text-[10px] text-gray-500">+{dayClasses.length - 3}</span>
+                        )}
                       </div>
                     )}
 
@@ -661,6 +828,7 @@ export function Schedule() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedItem(todo);
+                            setEditingClass(null);
                           }}
                         >
                           {todo.title}
@@ -688,34 +856,189 @@ export function Schedule() {
                   <div className={`${selectedItem.color} text-white px-4 py-2 rounded-xl`}>
                     課程
                   </div>
-                  <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
-                <h2 className="text-gray-800 mb-4">{selectedItem.name}</h2>
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <span className="text-2xl">📅</span>
+                <h2 className="text-xl font-bold text-gray-800 mb-6">{editingClass?.name ?? selectedItem.name}</h2>
+                {editingClass && editingClass.id === selectedItem.id ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">名稱</p>
+                        <input
+                          className="w-full rounded-xl border px-3 py-2 border-gray-200"
+                          value={editingClass.name}
+                          onChange={(e) => setEditingClass({ ...editingClass, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">星期</p>
+                        <Select.Root
+                          value={editingClass.day.toString()}
+                          onValueChange={(value) => setEditingClass({ ...editingClass, day: parseInt(value) })}
+                        >
+                          <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 rounded-xl border border-gray-200 bg-white">
+                            <Select.Value />
+                            <Select.Icon>
+                              <ChevronDown className="w-4 h-4" />
+                            </Select.Icon>
+                          </Select.Trigger>
+                          <Select.Portal>
+                            <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50">
+                              <Select.Viewport>
+                                {WEEKDAYS.map((label, idx) => (
+                                  <Select.Item key={idx} value={idx.toString()} className="relative flex items-center px-6 py-2 text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none">
+                                    <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                                      <Check className="w-4 h-4 text-blue-600" />
+                                    </Select.ItemIndicator>
+                                    <Select.ItemText>{label}</Select.ItemText>
+                                  </Select.Item>
+                                ))}
+                              </Select.Viewport>
+                            </Select.Content>
+                          </Select.Portal>
+                        </Select.Root>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">開始時間</p>
+                        <Select.Root
+                          value={editingClass.startTime}
+                          onValueChange={(value) => setEditingClass({ ...editingClass, startTime: value })}
+                        >
+                          <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 rounded-xl border border-gray-200 bg-white">
+                            <Select.Value />
+                            <Select.Icon>
+                              <ChevronDown className="w-4 h-4" />
+                            </Select.Icon>
+                          </Select.Trigger>
+                          <Select.Portal>
+                            <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-56">
+                              <Select.Viewport className="p-1">
+                                {TIME_SLOTS.map((time) => (
+                                  <Select.Item key={time} value={time} className="relative flex items-center px-6 py-2 text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none">
+                                    <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                                      <Check className="w-4 h-4 text-blue-600" />
+                                    </Select.ItemIndicator>
+                                    <Select.ItemText>{time}</Select.ItemText>
+                                  </Select.Item>
+                                ))}
+                              </Select.Viewport>
+                            </Select.Content>
+                          </Select.Portal>
+                        </Select.Root>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">結束時間</p>
+                        <Select.Root
+                          value={editingClass.endTime}
+                          onValueChange={(value) => setEditingClass({ ...editingClass, endTime: value })}
+                        >
+                          <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 rounded-xl border border-gray-200 bg-white">
+                            <Select.Value />
+                            <Select.Icon>
+                              <ChevronDown className="w-4 h-4" />
+                            </Select.Icon>
+                          </Select.Trigger>
+                          <Select.Portal>
+                            <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-56">
+                              <Select.Viewport className="p-1">
+                                {TIME_SLOTS.map((time) => (
+                                  <Select.Item key={time} value={time} className="relative flex items-center px-6 py-2 text-sm text-gray-800 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 outline-none">
+                                    <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                                      <Check className="w-4 h-4 text-blue-600" />
+                                    </Select.ItemIndicator>
+                                    <Select.ItemText>{time}</Select.ItemText>
+                                  </Select.Item>
+                                ))}
+                              </Select.Viewport>
+                            </Select.Content>
+                          </Select.Portal>
+                        </Select.Root>
+                      </div>
+                    </div>
                     <div>
-                      <p className="text-sm text-gray-500">每週</p>
-                      <p>{WEEKDAYS[selectedItem.day]}</p>
+                      <p className="text-sm text-gray-500 mb-1">上課地點</p>
+                      <input
+                        className="w-full rounded-xl border px-3 py-2 border-gray-200"
+                        value={editingClass.location}
+                        onChange={(e) => setEditingClass({ ...editingClass, location: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-600">顏色</p>
+                      <div className="flex flex-wrap gap-2">
+                        {COLORS.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setEditingClass({ ...editingClass, color })}
+                            className={`w-8 h-8 rounded-full border-2 ${color} ${
+                              editingClass.color === color ? 'border-gray-900 ring-2 ring-offset-2 ring-gray-400' : 'border-white shadow'
+                            }`}
+                            aria-label={`選擇顏色 ${color}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-6 mt-6 border-t border-gray-200">
+                      <button
+                        onClick={saveEditingClass}
+                        className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                      >
+                        儲存變更
+                      </button>
+                      <button
+                        onClick={() => setEditingClass(null)}
+                        className="px-8 py-3.5 rounded-2xl bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                      >
+                        取消
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <span className="text-2xl">⏰</span>
-                    <div>
-                      <p className="text-sm text-gray-500">上課時間</p>
-                      <p>{selectedItem.startTime} - {selectedItem.endTime}</p>
+                ) : (
+                  <>
+                    <div className="space-y-5 mb-8">
+                      <div className="flex items-center gap-4 text-gray-600">
+                        <span className="text-3xl">📅</span>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">每週</p>
+                          <p className="font-semibold text-gray-800 text-base">{WEEKDAYS[selectedItem.day]}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-gray-600">
+                        <span className="text-3xl">⏰</span>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">上課時間</p>
+                          <p className="font-semibold text-gray-800 text-base">{selectedItem.startTime} - {selectedItem.endTime}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-gray-600">
+                        <span className="text-3xl">📍</span>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">上課地點</p>
+                          <p className="font-semibold text-gray-800 text-base">{selectedItem.location}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-gray-600">
+                        <span className="text-3xl">🎨</span>
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">課程顏色</p>
+                          <div className={`w-10 h-10 rounded-xl ${selectedItem.color} border-2 border-white shadow-lg mt-1`}></div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-gray-600">
-                    <span className="text-2xl">📍</span>
-                    <div>
-                      <p className="text-sm text-gray-500">上課地點</p>
-                      <p>{selectedItem.location}</p>
+                    <div className="pt-6 border-t border-gray-200">
+                      <button
+                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                        onClick={() => setEditingClass(selectedItem)}
+                      >
+                        編輯課程
+                      </button>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -723,7 +1046,7 @@ export function Schedule() {
                   <div className={`${TODO_COLORS[selectedItem.todoType]} text-white px-4 py-2 rounded-xl`}>
                     {TODO_LABELS[selectedItem.todoType]}
                   </div>
-                  <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
@@ -902,6 +1225,22 @@ export function Schedule() {
                     placeholder="例如：普通教室 101"
                   />
                 </div>
+                <div>
+                  <label className="block text-gray-700 mb-2">課程顏色</label>
+                  <div className="flex flex-wrap gap-2">
+                    {COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewClass({ ...newClass, color })}
+                        className={`w-8 h-8 rounded-full border-2 ${
+                          newClass.color === color ? 'border-gray-900 ring-2 ring-offset-2 ring-gray-400' : 'border-white shadow'
+                        } ${color}`}
+                        aria-label={`選擇顏色 ${color}`}
+                      />
+                    ))}
+                  </div>
+                </div>
                 <button
                   onClick={handleAddClass}
                   disabled={!newClass.name || !newClass.location}
@@ -943,8 +1282,15 @@ export function Schedule() {
                 <div>
                   <label className="block text-gray-700 mb-2">關聯課程（選填）</label>
                   <Select.Root
-                    value={newTodo.courseName || "__none__"}
-                    onValueChange={(value) => setNewTodo({ ...newTodo, courseName: value === "__none__" ? "" : value })}
+                    value={newTodo.courseId || "__none__"}
+                    onValueChange={(value) => {
+                      if (value === "__none__") {
+                        setNewTodo({ ...newTodo, courseId: '', courseName: '' });
+                      } else {
+                        const selected = classes.find(c => c.id === value);
+                        setNewTodo({ ...newTodo, courseId: value, courseName: selected?.name || '' });
+                      }
+                    }}
                   >
                     <Select.Trigger className="flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-400 focus:outline-none bg-white">
                       <Select.Value placeholder="選擇課表上的課程" />
@@ -955,19 +1301,19 @@ export function Schedule() {
                     <Select.Portal>
                       <Select.Content className="overflow-hidden bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-60">
                         <Select.Viewport className="p-1">
-                          <Select.Item
-                            value="__none__"
-                            className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-500 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 outline-none"
-                          >
-                            <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
-                              <Check className="w-4 h-4 text-green-600" />
-                            </Select.ItemIndicator>
-                            <Select.ItemText>不關聯課程</Select.ItemText>
-                          </Select.Item>
+                        <Select.Item
+                          value="__none__"
+                          className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-500 cursor-pointer hover:bg-gray-50 focus:bg-gray-50 outline-none"
+                        >
+                          <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
+                            <Check className="w-4 h-4 text-green-600" />
+                          </Select.ItemIndicator>
+                          <Select.ItemText>不選課程（獨立任務）</Select.ItemText>
+                        </Select.Item>
                           {classes.map((classItem) => (
                             <Select.Item
                               key={classItem.id}
-                              value={classItem.name}
+                              value={classItem.id}
                               className="relative flex items-center px-8 py-2 rounded-lg text-sm text-gray-800 cursor-pointer hover:bg-green-50 focus:bg-green-50 outline-none"
                             >
                               <Select.ItemIndicator className="absolute left-2 inline-flex items-center">

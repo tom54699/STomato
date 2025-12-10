@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Timer, Play, Pause, RotateCcw, Award, Target, MapPin, Zap } from 'lucide-react';
+import { Timer, Play, Pause, RotateCcw, Award, Target, MapPin, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 import { User } from '../App';
 
 type HomeProps = {
@@ -16,6 +16,7 @@ type HomeProps = {
 type StudyPlan = {
   id: string;
   title: string;
+  courseId?: string; // 課程 ID（來自課表）
   courseName?: string; // 課程名稱（來自課表，選填）
   date: string;
   startTime: string;
@@ -35,7 +36,8 @@ type FocusLog = {
   timestamp: number;
   planId?: string;
   planTitle?: string;
-  subject?: string; // 科目分類
+  courseId?: string; // 課程 ID
+  courseName?: string; // 課程名稱
   location?: string;
 };
 
@@ -54,6 +56,7 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
   const [todayPlans, setTodayPlans] = useState<StudyPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [customLocation, setCustomLocation] = useState('');
+  const [showCompletedPlans, setShowCompletedPlans] = useState(false);
 
   // Circular slider drag state
   const [isDragging, setIsDragging] = useState(false);
@@ -139,7 +142,8 @@ export function Home({ user, onPointsUpdate, onGoToSettlement, onNavigateToPlann
       timestamp: Date.now(),
       planId: linkedPlan?.id,
       planTitle: linkedPlan?.title,
-      subject: linkedPlan?.courseName, // 課程名稱（從計畫取得）
+      courseId: linkedPlan?.courseId,
+      courseName: linkedPlan?.courseName, // 課程名稱（從計畫取得）
       location: linkedPlan?.location || customLocation || undefined,
     };
     recordFocusLog(log);
@@ -323,7 +327,11 @@ const toggleTimer = () => {
       return;
     }
     try {
-      const allPlans = JSON.parse(raw) as StudyPlan[];
+      const allPlans = (JSON.parse(raw) as any[]).map(plan => ({
+        ...plan,
+        courseName: plan.courseName || plan.subject,
+      })) as StudyPlan[];
+      localStorage.setItem('studyPlans', JSON.stringify(allPlans));
       setTodayPlans(allPlans.filter((plan) => plan.date === todayKey));
     } catch (error) {
       console.warn('Failed to parse studyPlans', error);
@@ -617,7 +625,7 @@ const toggleTimer = () => {
             </span>
           </div>
           <div className="space-y-4">
-            {todayPlans.map((plan, index) => {
+            {todayPlans.filter(plan => !plan.completed).map((plan, index) => {
               // 簡潔的顏色方案：只使用左側邊框
               const accentColors = [
                 'border-l-indigo-400',
@@ -797,6 +805,61 @@ const toggleTimer = () => {
               </div>
               );
             })}
+
+            {/* 已完成計畫區域 */}
+            {todayPlans.filter(plan => plan.completed).length > 0 && (
+              <div className="pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => setShowCompletedPlans(!showCompletedPlans)}
+                  className="w-full flex items-center justify-between text-gray-600 hover:text-gray-800 transition-colors py-2"
+                >
+                  <span className="text-sm font-medium">
+                    已完成 ({todayPlans.filter(plan => plan.completed).length})
+                  </span>
+                  {showCompletedPlans ? (
+                    <ChevronUp className="w-5 h-5" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5" />
+                  )}
+                </button>
+
+                {showCompletedPlans && (
+                  <div className="space-y-3 mt-3">
+                    {todayPlans.filter(plan => plan.completed).map((plan, index) => (
+                      <div
+                        key={plan.id}
+                        className="bg-gray-50 rounded-xl border-l-4 border-l-green-500 p-4 opacity-75"
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={true}
+                            onChange={() => togglePlanCompletion(plan.id)}
+                            className="mt-1 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-base font-medium text-gray-400 line-through mb-1">
+                              {plan.title}
+                            </h4>
+                            <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400">
+                              <span>{plan.startTime} - {plan.endTime}</span>
+                              {plan.courseName && (
+                                <span className="px-2 py-0.5 bg-gray-200 text-gray-500 rounded">
+                                  {plan.courseName}
+                                </span>
+                              )}
+                              {plan.pomodoroCount && plan.pomodoroCount > 0 && (
+                                <span>· {plan.pomodoroCount}🍅</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -16,14 +16,16 @@ type FocusLog = {
   timestamp: number;
   planId?: string;
   planTitle?: string;
-  subject?: string; // 科目分類
+  courseId?: string; // 課程 ID
+  courseName?: string; // 課程名稱
   location?: string;
 };
 
 type StudyPlan = {
   id: string;
   title: string;
-  subject?: string; // 科目分類（選填）
+  courseId?: string; // 課程 ID
+  courseName?: string; // 課程名稱（選填）
   date: string;
   startTime: string;
   endTime: string;
@@ -71,6 +73,7 @@ interface HeatmapData {
 }
 
 interface SubjectStat {
+  id?: string;
   name: string;
   minutes: number;
   count: number;
@@ -630,9 +633,9 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [courses, setCourses] = useState<Array<{ id: string; name: string; color: string }>>([]);
 
-  // 根據課程名稱獲取顏色的輔助函數
-  const getCourseColor = (courseName: string): string => {
-    const course = courses.find(c => c.name === courseName);
+  // 根據課程名稱或 ID 獲取顏色的輔助函數
+  const getCourseColor = (courseNameOrId: string): string => {
+    const course = courses.find(c => c.id === courseNameOrId || c.name === courseNameOrId);
     return course?.color || 'bg-gray-400';
   };
   const [expandedSections, setExpandedSections] = useState({
@@ -695,7 +698,13 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
     const savedLogs = localStorage.getItem('focusLogs');
     if (savedLogs) {
       try {
-        setLogs(JSON.parse(savedLogs) as FocusLog[]);
+        const parsed = JSON.parse(savedLogs) as any[];
+        const migrated = parsed.map(log => ({
+          ...log,
+          courseName: log.courseName || log.subject || log.planTitle,
+        }));
+        setLogs(migrated as FocusLog[]);
+        localStorage.setItem('focusLogs', JSON.stringify(migrated));
       } catch (error) {
         console.warn('Failed to parse focusLogs', error);
       }
@@ -703,7 +712,13 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
     const savedPlans = localStorage.getItem('studyPlans');
     if (savedPlans) {
       try {
-        setPlans(JSON.parse(savedPlans) as StudyPlan[]);
+        const parsed = JSON.parse(savedPlans) as any[];
+        const migratedPlans = parsed.map(plan => ({
+          ...plan,
+          courseName: plan.courseName || plan.subject,
+        }));
+        setPlans(migratedPlans as StudyPlan[]);
+        localStorage.setItem('studyPlans', JSON.stringify(migratedPlans));
       } catch (error) {
         console.warn('Failed to parse studyPlans', error);
       }
@@ -716,7 +731,85 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
         console.warn('Failed to parse scheduleClasses', error);
       }
     }
+
+    // 若課程名稱變更，同步更新 logs/plans 顯示
+    const pendingCourseUpdate = localStorage.getItem('pendingCourseUpdate');
+    if (pendingCourseUpdate) {
+      try {
+        const { id, name } = JSON.parse(pendingCourseUpdate);
+        let logsUpdated = false;
+        let plansUpdated = false;
+        const nextLogs = parsedLogs => parsedLogs.map((log: any) => {
+          if (log.courseId === id) {
+            logsUpdated = true;
+            return { ...log, courseName: name };
+          }
+          return log;
+        });
+        const nextPlans = parsedPlans => parsedPlans.map((plan: any) => {
+          if (plan.courseId === id) {
+            plansUpdated = true;
+            return { ...plan, courseName: name };
+          }
+          return plan;
+        });
+        if (logs.length) {
+          const updatedLogs = nextLogs(logs);
+          if (logsUpdated) {
+            setLogs(updatedLogs as FocusLog[]);
+            localStorage.setItem('focusLogs', JSON.stringify(updatedLogs));
+          }
+        }
+        if (plans.length) {
+          const updatedPlans = nextPlans(plans);
+          if (plansUpdated) {
+            setPlans(updatedPlans as StudyPlan[]);
+            localStorage.setItem('studyPlans', JSON.stringify(updatedPlans));
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to apply pendingCourseUpdate to insights', error);
+      } finally {
+        localStorage.removeItem('pendingCourseUpdate');
+      }
+    }
   }, []);
+
+  // 依課表補齊缺失的 courseId
+  useEffect(() => {
+    if (courses.length === 0) return;
+    let updated = false;
+    const nextLogs = logs.map(log => {
+      if (!log.courseId && log.courseName) {
+        const match = courses.find(c => c.name === log.courseName);
+        if (match) {
+          updated = true;
+          return { ...log, courseId: match.id };
+        }
+      }
+      return log;
+    });
+    if (updated) {
+      setLogs(nextLogs);
+      localStorage.setItem('focusLogs', JSON.stringify(nextLogs));
+    }
+
+    let plansUpdated = false;
+    const nextPlans = plans.map(plan => {
+      if (!plan.courseId && plan.courseName) {
+        const match = courses.find(c => c.name === plan.courseName);
+        if (match) {
+          plansUpdated = true;
+          return { ...plan, courseId: match.id };
+        }
+      }
+      return plan;
+    });
+    if (plansUpdated) {
+      setPlans(nextPlans);
+      localStorage.setItem('studyPlans', JSON.stringify(nextPlans));
+    }
+  }, [courses]);
 
   const weekStats = useMemo((): TimeRangeStats => {
     const today = new Date();
@@ -1180,20 +1273,22 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
 
     const completionRate = weekPlans.length > 0 ? Math.round((completedPlans.length / weekPlans.length) * 100) : 0;
 
-    // 科目/標題分析（優先使用 subject，沒有則使用 planTitle）
-    const subjectStats: { [key: string]: { minutes: number; count: number } } = {};
+    // 課程/標題分析（優先使用 courseId/courseName，沒有則使用 planTitle）
+    const subjectStats: { [key: string]: { minutes: number; count: number; name: string; id?: string } } = {};
     logs.forEach(log => {
-      const key = log.subject || log.planTitle;
+      const key = log.courseId || log.courseName || log.planTitle;
       if (key) {
         if (!subjectStats[key]) {
-          subjectStats[key] = { minutes: 0, count: 0 };
+            const course = courses.find(c => c.id === log.courseId || c.name === log.courseName);
+            const name = course?.name || log.courseName || log.planTitle || '未分類';
+          subjectStats[key] = { minutes: 0, count: 0, name, id: course?.id };
         }
         subjectStats[key].minutes += log.minutes;
         subjectStats[key].count += 1;
       }
     });
-    const sortedSubjects = Object.entries(subjectStats)
-      .sort((a, b) => b[1].minutes - a[1].minutes)
+    const sortedSubjects = Object.values(subjectStats)
+      .sort((a, b) => b.minutes - a.minutes)
       .slice(0, 5);
 
     // 時段分析
@@ -1234,7 +1329,7 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
       totalTargetMinutes,
       totalCompletedMinutes,
     };
-  }, [plans, logs, timeRange]);
+  }, [plans, logs, timeRange, courses]);
 
   const dynamicSuggestions = useMemo(() => {
     const suggestions: string[] = [];
@@ -1745,14 +1840,14 @@ export function Insights({ user, onViewHistory }: InsightsProps) {
                 <h2 className="text-gray-800">最投入科目 Top 5</h2>
               </div>
               <div className="space-y-3">
-                {planStats.sortedSubjects.map(([subject, stats], index) => {
-                  const maxMinutes = planStats.sortedSubjects[0][1].minutes;
+                {planStats.sortedSubjects.map((stats, index) => {
+                  const maxMinutes = planStats.sortedSubjects[0].minutes;
                   const widthPercent = (stats.minutes / maxMinutes) * 100;
-                  const courseColor = getCourseColor(subject);
+                  const courseColor = getCourseColor(stats.id || stats.name);
                   return (
-                    <div key={subject} className="space-y-1">
+                    <div key={stats.id || stats.name} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-700 font-medium truncate flex-1">{subject}</span>
+                        <span className="text-gray-700 font-medium truncate flex-1">{stats.name}</span>
                         <span className="text-gray-500 ml-2">{stats.minutes} 分鐘 ({stats.count}🍅)</span>
                       </div>
                       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
